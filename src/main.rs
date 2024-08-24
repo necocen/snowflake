@@ -9,25 +9,35 @@ mod simulation;
 struct SimulationState {
     grid: Array2<f32>,
     n: usize,
+    alpha: f32,
+    #[allow(dead_code)]
     beta: f32,
     gamma: f32,
-    alpha: f32,
     scale: f32,
     step: u64,
+}
+
+#[derive(Component)]
+struct Snowflake;
+
+impl SimulationState {
+    pub fn new(n: usize, alpha: f32, beta: f32, gamma: f32, scale: f32) -> Self {
+        Self {
+            grid: init_grid(n, beta),
+            n,
+            alpha,
+            beta,
+            gamma,
+            scale,
+            step: 0,
+        }
+    }
 }
 
 fn main() {
     App::new()
         .add_plugins((DefaultPlugins, ShapePlugin))
-        .insert_resource(SimulationState {
-            grid: Array2::zeros((0, 0)),
-            n: 1000,
-            beta: 0.4,
-            gamma: 0.0001,
-            alpha: 0.502,
-            scale: 2.0,
-            step: 0,
-        })
+        .insert_resource(SimulationState::new(1000, 0.502, 0.4, 0.0001, 2.0))
         .add_systems(Startup, setup)
         .add_systems(Update, update_visualization)
         .add_systems(FixedUpdate, update_simulation)
@@ -35,9 +45,8 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, mut sim_state: ResMut<SimulationState>) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
-    sim_state.grid = init_grid(sim_state.n, sim_state.beta);
 }
 
 fn update_simulation(mut sim_state: ResMut<SimulationState>) {
@@ -88,6 +97,3 @@ fn update_visualization(
         ));
     }
 }
-
-#[derive(Component)]
-struct Snowflake;
