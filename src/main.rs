@@ -57,34 +57,29 @@ fn update_grid(n: usize, s: &mut Array2<f32>, gamma: f32, alpha: f32) {
 }
 
 fn extract_contours(grid: &Array2<bool>, scale: f32) -> Vec<Vec<Point>> {
-    let n = grid.shape()[0];
     let mut segments: HashMap<(i32, i32), (i32, i32)> = HashMap::new();
-
     let directions = [(1, 1), (0, 2), (-1, 1), (-1, -1), (0, -2), (1, -1)];
+    grid.indexed_iter().for_each(|((i, j), v)| {
+        if *v {
+            for (k, &(di, dj)) in directions.iter().enumerate() {
+                let start = (2 * i as i32 + j as i32 + di, 3 * j as i32 + dj);
+                let end = (
+                    2 * i as i32 + j as i32 + directions[(k + 1) % 6].0,
+                    3 * j as i32 + directions[(k + 1) % 6].1,
+                );
 
-    for i in 0..n {
-        for j in 0..n {
-            if grid[[i, j]] {
-                for (k, &(di, dj)) in directions.iter().enumerate() {
-                    let start = (2 * i as i32 + j as i32 + di, 3 * j as i32 + dj);
-                    let end = (
-                        2 * i as i32 + j as i32 + directions[(k + 1) % 6].0,
-                        3 * j as i32 + directions[(k + 1) % 6].1,
-                    );
-
-                    if let Some(&reverse_start) = segments.get(&end) {
-                        if reverse_start == start {
-                            segments.remove(&end);
-                        } else {
-                            segments.insert(start, end);
-                        }
+                if let Some(&reverse_start) = segments.get(&end) {
+                    if reverse_start == start {
+                        segments.remove(&end);
                     } else {
                         segments.insert(start, end);
                     }
+                } else {
+                    segments.insert(start, end);
                 }
             }
         }
-    }
+    });
 
     let mut contours = Vec::new();
     while !segments.is_empty() {
