@@ -1,3 +1,5 @@
+use bevy::prelude::*;
+use bevy_prototype_lyon::prelude::*;
 use ndarray::{Array2, Zip};
 use std::collections::HashMap;
 
@@ -54,7 +56,7 @@ fn update_grid(n: usize, s: &mut Array2<f32>, gamma: f32, alpha: f32) {
         });
 }
 
-fn extract_contours(grid: &Array2<bool>, a: f32) -> Vec<Vec<Point>> {
+fn extract_contours(grid: &Array2<bool>, scale: f32) -> Vec<Vec<Point>> {
     let n = grid.shape()[0];
     let mut segments: HashMap<(i32, i32), (i32, i32)> = HashMap::new();
 
@@ -102,26 +104,98 @@ fn extract_contours(grid: &Array2<bool>, a: f32) -> Vec<Vec<Point>> {
         .map(|contour| {
             contour
                 .into_iter()
-                .map(|(x, y)| (a * x as f32 / 2.0, a * y as f32 / 2.0 / 3.0f32.sqrt()))
+                .map(|(x, y)| {
+                    (
+                        scale * x as f32 / 2.0,
+                        scale * y as f32 / 2.0 / 3.0f32.sqrt(),
+                    )
+                })
                 .collect()
         })
         .collect()
 }
 
-fn main() {
-    let n = 500;
-    let alpha = 0.502;
-    let beta = 0.4;
-    let gamma = 0.0001;
-    let num_steps = 10000;
+#[derive(Resource)]
+struct SimulationState {
+    grid: Array2<f32>,
+    n: usize,
+    beta: f32,
+    gamma: f32,
+    alpha: f32,
+    scale: f32,
+    step: u64,
+}
 
-    let mut s = init_grid(n, beta);
-    for _ in 0..num_steps {
-        update_grid(n, &mut s, gamma, alpha);
+fn main() {
+    App::new()
+        .add_plugins((DefaultPlugins, ShapePlugin))
+        .insert_resource(SimulationState {
+            grid: Array2::zeros((0, 0)),
+            n: 1000,
+            beta: 0.4,
+            gamma: 0.0001,
+            alpha: 0.502,
+            scale: 2.0,
+            step: 0,
+        })
+        .add_systems(Startup, setup)
+        .add_systems(Update, update_visualization)
+        .add_systems(FixedUpdate, update_simulation)
+        .insert_resource(Time::<Fixed>::from_hz(1000f64))
+        .run();
+}
+
+fn setup(mut commands: Commands, mut sim_state: ResMut<SimulationState>) {
+    commands.spawn(Camera2dBundle::default());
+    sim_state.grid = init_grid(sim_state.n, sim_state.beta);
+}
+
+fn update_simulation(mut sim_state: ResMut<SimulationState>) {
+    let gamma = sim_state.gamma;
+    let alpha = sim_state.alpha;
+    update_grid(sim_state.n, &mut sim_state.grid, gamma, alpha);
+    sim_state.step += 1;
+}
+
+fn update_visualization(
+    mut commands: Commands,
+    sim_state: Res<SimulationState>,
+    query: Query<Entity, With<Snowflake>>,
+) {
+    // 既存の雪の結晶を削除
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
     }
 
-    let grid = s.mapv(|x| x >= 1.0);
-    let contours = extract_contours(&grid, 1.0);
+    // 新しい輪郭を描画
+    let threshold_grid = sim_state.grid.map(|&x| x >= 1.0);
+    let contours = extract_contours(&threshold_grid, sim_state.scale);
+    tracing::info!("step {}: {}", sim_state.step, contours.len());
 
-    println!("Number of contours: {}", contours.len());
+    for (i, contour) in contours.iter().enumerate() {
+        let mesh = shapes::Polygon {
+            points: contour
+                .iter()
+                .map(|&(x, y)| {
+                    Vec2::new(
+                        x - sim_state.scale * sim_state.n as f32 / 2.0 - 800.0,
+                        y - sim_state.scale * sim_state.n as f32 / 2.0,
+                    )
+                })
+                .collect(),
+            closed: true,
+        };
+        let color = if i == 0 { Color::WHITE } else { Color::BLACK };
+
+        commands.spawn((
+            ShapeBundle {
+                path: GeometryBuilder::build_as(&mesh),
+                ..default()
+            },
+            Fill::color(color),
+        ));
+    }
 }
+
+#[derive(Component)]
+struct Snowflake;
