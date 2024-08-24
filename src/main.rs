@@ -9,61 +9,49 @@ fn init_grid(n: usize, beta: f32) -> Array2<f32> {
     s
 }
 
-fn update_grid(n: usize, s: Array2<f32>, gamma: f32, alpha: f32) -> Array2<f32> {
-    let mut receptive_cells = Array2::<bool>::default((n, n));
-    Zip::indexed(&mut receptive_cells).par_for_each(|(i, j), cell| {
-        *cell = s[[i, j]] >= 1.0
-            || s[[(i + 1) % n, j]] >= 1.0
-            || s[[(i + n - 1) % n, j]] >= 1.0
-            || s[[i, (j + 1) % n]] >= 1.0
-            || s[[i, (j + n - 1) % n]] >= 1.0
-            || s[[(i + n - 1) % n, (j + 1) % n]] >= 1.0
-            || s[[(i + 1) % n, (j + n - 1) % n]] >= 1.0;
+fn update_grid(n: usize, s: &mut Array2<f32>, gamma: f32, alpha: f32) {
+    let s_view = s.view();
+    // receptive_cells と uv0 を同時に計算
+    let combined = Zip::indexed(s.view()).par_map_collect(|(i, j), &s_val| {
+        let receptive = s_val >= 1.0
+            || s_view[[(i + 1) % n, j]] >= 1.0
+            || s_view[[(i + n - 1) % n, j]] >= 1.0
+            || s_view[[i, (j + 1) % n]] >= 1.0
+            || s_view[[i, (j + n - 1) % n]] >= 1.0
+            || s_view[[(i + n - 1) % n, (j + 1) % n]] >= 1.0
+            || s_view[[(i + 1) % n, (j + n - 1) % n]] >= 1.0;
+        let uv = if receptive {
+            (0.0, s_val)
+        } else {
+            (s_val, 0.0)
+        };
+        (receptive, uv)
     });
 
-    let u0 = Zip::from(&s).and(&receptive_cells).map_collect(
-        |&s_val, &receptive| {
+    // s の更新を行う
+    Zip::indexed(s)
+        .and(&combined)
+        .par_for_each(|(i, j), s_val, &(receptive, (u0, v0))| {
+            let mut v1 = v0;
+            // Rule 1
             if receptive {
-                0.0
-            } else {
-                s_val
+                v1 += gamma;
             }
-        },
-    );
-    let v0 = Zip::from(&s).and(&receptive_cells).map_collect(
-        |&s_val, &receptive| {
-            if receptive {
-                s_val
-            } else {
-                0.0
+
+            // Rule 2
+            let mut u0_neighbors = 0.0;
+            for (di, dj) in &[(1, 0), (-1, 0), (0, 1), (0, -1), (-1, 1), (1, -1)] {
+                let (ni, nj) = (
+                    (i as isize + di + n as isize) as usize % n,
+                    (j as isize + dj + n as isize) as usize % n,
+                );
+                u0_neighbors += combined[[ni, nj]].1 .0;
             }
-        },
-    );
-    let mut u1 = Array2::<f32>::zeros((n, n));
-    let mut v1 = v0.clone();
+            u0_neighbors /= 6.0;
 
-    // Rule 1
-    Zip::indexed(&mut v1).par_for_each(|(i, j), cell| {
-        if receptive_cells[[i, j]] {
-            *cell += gamma;
-        }
-    });
-
-    // Rule 2
-    Zip::indexed(&mut u1).par_for_each(|(i, j), cell| {
-        let mut u0_neighbors = 0.0;
-        u0_neighbors += u0[[(i + 1) % n, j]];
-        u0_neighbors += u0[[(i + n - 1) % n, j]];
-        u0_neighbors += u0[[i, (j + 1) % n]];
-        u0_neighbors += u0[[i, (j + n - 1) % n]];
-        u0_neighbors += u0[[(i + n - 1) % n, (j + 1) % n]];
-        u0_neighbors += u0[[(i + 1) % n, (j + n - 1) % n]];
-        u0_neighbors /= 6.0;
-        *cell = u0[[i, j]] + alpha * (u0_neighbors - u0[[i, j]]) / 2.0;
-    });
-
-    // Update s
-    &u1 + &v1
+            let u1 = u0 + alpha * (u0_neighbors - u0) / 2.0;
+            *s_val = u1 + v1;
+        });
 }
 
 fn extract_contours(grid: &Array2<bool>, a: f32) -> Vec<Vec<Point>> {
@@ -129,7 +117,7 @@ fn main() {
 
     let mut s = init_grid(n, beta);
     for _ in 0..num_steps {
-        s = update_grid(n, s, gamma, alpha);
+        update_grid(n, &mut s, gamma, alpha);
     }
 
     let grid = s.mapv(|x| x >= 1.0);
