@@ -2,6 +2,7 @@ use bevy::{
     prelude::*,
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
+use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use fnv::FnvHashMap;
 use ndarray::Array2;
 use simulation::{init_grid, update_grid};
@@ -75,14 +76,14 @@ impl Default for SimulationConfig {
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins))
+        .add_plugins((DefaultPlugins, EguiPlugin))
         .init_resource::<Field>()
         .init_resource::<SimulationConfig>()
         .add_systems(Startup, setup)
         .add_systems(PostStartup, init_simulation)
-        .add_systems(Update, update_visualization)
+        .add_systems(Update, (configure_ui, update_visualization))
         .add_systems(FixedUpdate, update_simulation)
-        .insert_resource(Time::<Fixed>::from_hz(200f64))
+        .insert_resource(Time::<Fixed>::from_hz(100f64))
         .run();
 }
 
@@ -141,4 +142,27 @@ fn update_visualization(mut commands: Commands, field: Res<Field>) {
             }
         }
     }
+}
+
+fn configure_ui(
+    mut contexts: EguiContexts,
+    mut field: ResMut<Field>,
+    mut config: ResMut<SimulationConfig>,
+) {
+    egui::Window::new("Snowflake").show(contexts.ctx_mut(), |ui| {
+        ui.add(egui::Label::new(format!("Step: {}", field.step)));
+        ui.vertical(|ui| {
+            ui.add(egui::Slider::new(&mut config.alpha, 0.0..=2.0).text("alpha"));
+            ui.add(egui::Slider::new(&mut config.beta, 0.0..=1.0).text("beta"));
+            ui.add(
+                egui::Slider::new(&mut config.gamma, 0.0..=1.0)
+                    .text("gamma")
+                    .logarithmic(true),
+            );
+        });
+
+        if ui.button("Reset").clicked() {
+            field.init(config.beta);
+        }
+    });
 }
