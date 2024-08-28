@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use bevy::{
     prelude::*,
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
@@ -5,7 +7,8 @@ use bevy::{
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use fnv::FnvHashMap;
 use ndarray::Array2;
-use simulation::{init_grid, update_grid};
+use simulation::{extract_contours, init_grid, update_grid};
+use svg::node::element::{path::Data, Path};
 
 mod simulation;
 
@@ -56,6 +59,33 @@ impl Field {
             (y as f32 - (n / 2) as f32) * f32::sqrt(3.0) / 2.0,
             0.0,
         ) * self.scale
+    }
+
+    pub fn write_to_svg(&self, filepath: impl Into<PathBuf>) -> Result<(), std::io::Error> {
+        let n = self.n();
+        let width = 1.5 * n as f32;
+        let height = f32::sqrt(3.0) * n as f32 / 2.0;
+        let frozen_cells = self.cells.map(|&x| x >= 1.0);
+        let contours = extract_contours(&frozen_cells, 1.0);
+        let mut data = Data::new();
+        for contour in contours {
+            let mut iter = contour.iter();
+            if let Some((x, y)) = iter.next() {
+                data = data.move_to((*x, *y));
+            }
+            for (x, y) in iter {
+                data = data.line_to((*x, *y));
+            }
+            data = data.close();
+        }
+        let path = Path::new().set("fill", "black").set("d", data);
+
+        let document = svg::Document::new()
+            .set("viewBox", (0, 0, width, height))
+            .set("width", width)
+            .set("height", height)
+            .add(path);
+        svg::save(filepath.into(), &document)
     }
 }
 
@@ -172,6 +202,9 @@ fn configure_ui(
                 .clicked()
             {
                 field.is_running = !field.is_running;
+            }
+            if ui.button("Save").clicked() {
+                field.write_to_svg("snowflake.svg").unwrap();
             }
             if ui.button("Reset").clicked() {
                 field.init(config.beta);
