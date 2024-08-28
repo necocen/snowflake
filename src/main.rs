@@ -15,6 +15,7 @@ struct Field {
     meshes: FnvHashMap<(usize, usize), Entity>,
     step: u64,
     scale: f32,
+    is_running: bool,
 }
 
 impl Default for Field {
@@ -29,7 +30,8 @@ impl Field {
             cells: Array2::<f32>::zeros((n, n)),
             meshes: FnvHashMap::default(),
             step: 0,
-            scale: 4.0,
+            scale: 1.0,
+            is_running: false,
         }
     }
 
@@ -120,10 +122,13 @@ fn setup(
 
 fn init_simulation(mut field: ResMut<Field>, config: Res<SimulationConfig>) {
     field.init(config.beta);
+    field.is_running = true;
 }
 
 fn update_simulation(mut field: ResMut<Field>, config: Res<SimulationConfig>) {
-    field.update(config.alpha, config.gamma);
+    if field.is_running {
+        field.update(config.alpha, config.gamma);
+    }
 }
 
 fn update_visualization(mut commands: Commands, field: Res<Field>) {
@@ -153,6 +158,7 @@ fn configure_ui(
         ui.add(egui::Label::new(format!("Step: {}", field.step)));
         ui.vertical(|ui| {
             ui.add(egui::Slider::new(&mut config.alpha, 0.0..=2.0).text("alpha"));
+            // TODO: 実行中に背景場を変えられるような実装が必要で、それはメソッドにしないといけない
             ui.add(egui::Slider::new(&mut config.beta, 0.0..=1.0).text("beta"));
             ui.add(
                 egui::Slider::new(&mut config.gamma, 0.0..=1.0)
@@ -160,9 +166,17 @@ fn configure_ui(
                     .logarithmic(true),
             );
         });
-
-        if ui.button("Reset").clicked() {
-            field.init(config.beta);
-        }
+        ui.horizontal(|ui| {
+            if ui
+                .button(if field.is_running { "Pause" } else { "Resume" })
+                .clicked()
+            {
+                field.is_running = !field.is_running;
+            }
+            if ui.button("Reset").clicked() {
+                field.init(config.beta);
+                field.is_running = true;
+            }
+        });
     });
 }
