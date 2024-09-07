@@ -8,5 +8,6 @@ bevy = "0.14.1"
 bevy_egui = "0.29.0"
 fnv = "1.0.7"
 ndarray = { version = "0.16.1", features = ["rayon"] }
+parking_lot = "0.12.3"
 svg = "0.17.0"
 tracing = "0.1.40"
