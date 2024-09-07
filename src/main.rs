@@ -115,7 +115,7 @@ fn main() {
         .add_systems(PostStartup, init_simulation)
         .add_systems(Update, (configure_ui, update_visualization))
         .add_systems(FixedUpdate, update_simulation)
-        .insert_resource(Time::<Fixed>::from_hz(100f64))
+        .insert_resource(Time::<Fixed>::from_hz(200f64))
         .run();
 }
 
