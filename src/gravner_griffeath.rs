@@ -13,7 +13,7 @@ impl Plugin for GravnerGrifeeathSimulatorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationConfig>();
         app.add_systems(Startup, setup);
-        app.add_systems(Update, event_listener);
+        app.add_systems(Update, (event_listener, configure_ui));
     }
 }
 
@@ -241,4 +241,40 @@ fn event_listener(field: Res<Field>, mut reset_events: EventReader<ResetSimulati
     for _ in reset_events.read() {
         field.0.write().step = 0;
     }
+}
+
+fn configure_ui(mut contexts: EguiContexts, config: Res<SimulationConfig>) {
+    egui::Window::new("Gravner-Griffeath's Snowflake").show(contexts.ctx_mut(), |ui| {
+        ui.vertical(|ui| {
+            ui.add(
+                egui::Slider::new(&mut config.0.write().rho, 0.0..=1.0).text("ρ: vapor density"),
+            );
+            ui.add(egui::Slider::new(&mut config.0.write().beta, 1.0..=4.0).text("β: anisotropy"));
+            ui.add(
+                egui::Slider::new(&mut config.0.write().alpha, 0.0..=1.0)
+                    .text("α: attachment threshold for b"),
+            );
+            ui.add(
+                egui::Slider::new(&mut config.0.write().theta, 0.0..=0.5)
+                    .text("θ: attachment threshold for d")
+                    .logarithmic(true),
+            );
+            ui.add(
+                egui::Slider::new(&mut config.0.write().kappa, 0.0..=1.0)
+                    .text("κ: freezing rate")
+                    .logarithmic(true),
+            );
+            ui.add(egui::Slider::new(&mut config.0.write().mu, 0.0..=0.3).text("μ: melting rate"));
+            ui.add(
+                egui::Slider::new(&mut config.0.write().gamma, 0.0..=0.01)
+                    .text("γ: sublimation rate")
+                    .logarithmic(true),
+            );
+            ui.add(
+                egui::Slider::new(&mut config.0.write().sigma, 0.0..=1.0)
+                    .text("σ: noise")
+                    .logarithmic(true),
+            );
+        });
+    });
 }
