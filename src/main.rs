@@ -6,6 +6,7 @@ use ndarray::Array2;
 use parking_lot::RwLock;
 use svg::node::element::{path::Data, Path, SVG};
 
+mod gravner_griffeath;
 mod reiter;
 mod utils;
 mod visualization;
@@ -15,7 +16,8 @@ fn main() {
         .init_resource::<Field>()
         .add_event::<ResetSimulation>()
         .add_plugins((DefaultPlugins, EguiPlugin))
-        .add_plugins(reiter::ReiterSimulatorPlugin)
+        // .add_plugins(reiter::ReiterSimulatorPlugin)
+        .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
         .add_plugins(visualization::VisualizationPlugin)
         .add_systems(PostStartup, start_simulation)
         .add_systems(Update, configure_ui)
