@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use ndarray::{parallel::prelude::*, Array2, Zip};
+use ndarray::{Array2, Zip};
 use parking_lot::RwLock;
 
 use crate::{Field, ResetSimulation};
@@ -124,94 +124,116 @@ impl State {
         sigma: f32,
     ) {
         let n = self.a.shape()[0];
-        let a = self.a.view();
-        let snowflake = a.mapv(|v| v as u8 as f32);
-        let neighbors = Zip::indexed(&a).par_map_collect(|(i, j), _| {
-            a[[(i + 1) % n, j]] as u8
-                + a[[(i + n - 1) % n, j]] as u8
-                + a[[i, (j + 1) % n]] as u8
-                + a[[i, (j + n - 1) % n]] as u8
-                + a[[(i + n - 1) % n, (j + 1) % n]] as u8
-                + a[[(i + 1) % n, (j + n - 1) % n]] as u8
+
+        let neighbors = Zip::indexed(&self.a).par_map_collect(|(i, j), _| {
+            self.a[[(i + 1) % n, j]] as u8
+                + self.a[[(i + n - 1) % n, j]] as u8
+                + self.a[[i, (j + 1) % n]] as u8
+                + self.a[[i, (j + n - 1) % n]] as u8
+                + self.a[[(i + n - 1) % n, (j + 1) % n]] as u8
+                + self.a[[(i + 1) % n, (j + n - 1) % n]] as u8
         });
-        let boundary = neighbors.mapv(|n| (n > 0) as u8 as f32) * (1.0 - &snowflake);
 
         // (i) Diffusion
-        let d = self.d.view();
-        let d = (Zip::indexed(&d).par_map_collect(|(i, j), &d_val| {
-            d_val
-                + d[[(i + 1) % n, j]]
-                + d[[(i + n - 1) % n, j]]
-                + d[[i, (j + 1) % n]]
-                + d[[i, (j + n - 1) % n]]
-                + d[[(i + n - 1) % n, (j + 1) % n]]
-                + d[[(i + 1) % n, (j + n - 1) % n]]
-        }) + neighbors.mapv(|v| v as f32) * &d)
-            / 7.0
-            * (1.0 - &snowflake);
+        let mut d_new = Array2::<f32>::zeros(self.d.raw_dim());
+        Zip::indexed(&mut d_new)
+            .and(&self.a)
+            .and(&self.d)
+            .and(&neighbors)
+            .par_for_each(|(i, j), d, &a_old, &d_old, &neighbors| {
+                if !a_old {
+                    *d = (d_old
+                        + self.d[[(i + 1) % n, j]]
+                        + self.d[[(i + n - 1) % n, j]]
+                        + self.d[[i, (j + 1) % n]]
+                        + self.d[[i, (j + n - 1) % n]]
+                        + self.d[[(i + n - 1) % n, (j + 1) % n]]
+                        + self.d[[(i + 1) % n, (j + n - 1) % n]]
+                        + neighbors as f32 * d_old)
+                        / 7.0;
+                }
+            });
 
         // (ii) Freezing
-        let db = &d * &boundary;
-        let b = &self.b + (1.0 - kappa) * &db;
-        let c = &self.c + kappa * &db;
-        let d = d - &db;
+        let mut b_new = self.b.clone();
+        let mut c_new = self.c.clone();
+        Zip::from(&self.a)
+            .and(&mut b_new)
+            .and(&mut c_new)
+            .and(&mut d_new)
+            .and(&neighbors)
+            .par_for_each(|&a, b, c, d, &neighbors| {
+                if !a && neighbors > 0 {
+                    *b += (1.0 - kappa) * *d;
+                    *c += kappa * *d;
+                    *d = 0.0;
+                }
+            });
 
         // (iii) Attachment
-        let a = Zip::indexed(&a).par_map_collect(|(i, j), &a| {
-            if boundary[[i, j]] == 0.0 {
-                return a;
-            }
-            match neighbors[[i, j]] {
-                // not a boundary cell
-                0 => panic!("not a boundary cell"),
-                // tip or flat spot
-                1..=2 => b[[i, j]] >= beta,
-                // concave spot
-                3 => {
-                    // b(x) >= 1.0 or [b(x) >= alpha and Σ_{y: neighbor of x} d(y) < theta]
-                    b[[i, j]] >= 1.0
-                        || (b[[i, j]] >= alpha
-                            && (d[[(i + 1) % n, j]]
-                                + d[[(i + n - 1) % n, j]]
-                                + d[[i, (j + 1) % n]]
-                                + d[[i, (j + n - 1) % n]]
-                                + d[[(i + n - 1) % n, (j + 1) % n]]
-                                + d[[(i + 1) % n, (j + n - 1) % n]])
-                                < theta)
+        let mut a_new = self.a.clone();
+        Zip::indexed(&mut a_new)
+            .and(&mut b_new)
+            .and(&mut c_new)
+            .and(&self.a)
+            .and(&neighbors)
+            .par_for_each(|(i, j), a, b, c, &a_old, &neighbors| {
+                if a_old || neighbors == 0 {
+                    return;
                 }
-                _ => true,
-            }
-        });
 
-        let ab = Zip::from(&a)
-            .and(&b)
-            .par_map_collect(|&a, &b| if a { b } else { 0.0 });
-        let b = b - &ab;
-        let c = c + &ab;
+                *a = match neighbors {
+                    0 => panic!("not a boundary cell"),
+                    1..=2 => *b >= beta,
+                    3 => {
+                        // b(x) >= 1.0 or [b(x) >= alpha and Σ_{y: neighbor of x} d(y) < theta]
+                        *b >= 1.0
+                            || (*b >= alpha
+                                && d_new[[(i + 1) % n, j]]
+                                    + d_new[[(i + n - 1) % n, j]]
+                                    + d_new[[i, (j + 1) % n]]
+                                    + d_new[[i, (j + n - 1) % n]]
+                                    + d_new[[(i + n - 1) % n, (j + 1) % n]]
+                                    + d_new[[(i + 1) % n, (j + n - 1) % n]]
+                                    < theta)
+                    }
+                    _ => true,
+                };
+
+                if *a {
+                    *c += *b;
+                    *b = 0.0;
+                }
+            });
 
         // (iv) Melting
-        let boundary = Zip::indexed(&a).par_map_collect(|(i, j), a_val| {
-            (!a_val
-                && (a[[(i + 1) % n, j]]
-                    || a[[(i + n - 1) % n, j]]
-                    || a[[i, (j + 1) % n]]
-                    || a[[i, (j + n - 1) % n]]
-                    || a[[(i + n - 1) % n, (j + 1) % n]]
-                    || a[[(i + 1) % n, (j + n - 1) % n]])) as u8 as f32
-        });
-        let mbb = mu * &b * &boundary;
-        let gcb = gamma * &c * &boundary;
-        let b = b - &mbb;
-        let c = c - &gcb;
-        let d = d + &mbb + &gcb;
+        Zip::indexed(&mut b_new)
+            .and(&mut c_new)
+            .and(&mut d_new)
+            .par_for_each(|(i, j), b, c, d| {
+                let boundary = !a_new[[i, j]]
+                    && (a_new[[(i + 1) % n, j]]
+                        || a_new[[(i + n - 1) % n, j]]
+                        || a_new[[i, (j + 1) % n]]
+                        || a_new[[i, (j + n - 1) % n]]
+                        || a_new[[(i + n - 1) % n, (j + 1) % n]]
+                        || a_new[[(i + 1) % n, (j + n - 1) % n]]);
+                if boundary {
+                    let mu_b = mu * *b;
+                    let gamma_c = gamma * *c;
+                    *b -= mu_b;
+                    *c -= gamma_c;
+                    *d += mu_b + gamma_c;
+                }
+            });
 
         // (v) Noise
-        // TODO
+        // TODO: ノイズの実装
 
-        self.a = a;
-        self.b = b;
-        self.c = c;
-        self.d = d;
+        self.a = a_new;
+        self.b = b_new;
+        self.c = c_new;
+        self.d = d_new;
     }
 }
 
