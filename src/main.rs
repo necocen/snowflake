@@ -19,7 +19,7 @@ fn main() {
         // .add_plugins(reiter::ReiterSimulatorPlugin)
         .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
         .add_plugins(visualization::VisualizationPlugin)
-        .add_systems(PostStartup, start_simulation)
+        .add_systems(Startup, start_simulation)
         .add_systems(Update, configure_ui)
         .run();
 }
@@ -36,7 +36,7 @@ struct ResetSimulation;
 pub struct Field(pub Arc<RwLock<FieldInner>>);
 
 pub struct FieldInner {
-    pub frozen_cells: Array2<bool>,
+    pub cells: Array2<f32>,
     pub step: u64,
     pub is_running: bool,
 }
@@ -44,17 +44,17 @@ pub struct FieldInner {
 impl FieldInner {
     fn new(n: usize) -> Self {
         Self {
-            frozen_cells: Array2::<bool>::default((n, n)),
+            cells: Array2::<f32>::zeros((n, n)),
             step: 0,
             is_running: false,
         }
     }
 
     pub fn write_to_svg(&self) -> SVG {
-        let n = self.frozen_cells.shape()[0];
+        let n = self.cells.shape()[0];
         let width = 1.5 * n as f32;
         let height = f32::sqrt(3.0) * n as f32 / 2.0;
-        let contours = utils::extract_contours(&self.frozen_cells, 1.0);
+        let contours = utils::extract_contours(&self.cells.mapv(|c| c > 0.0), 1.0);
         let mut data = Data::new();
         for contour in contours {
             let mut iter = contour.iter();

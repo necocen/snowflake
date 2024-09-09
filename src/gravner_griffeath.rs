@@ -57,7 +57,7 @@ impl Default for SimulationConfigInner {
 fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
     let field = Arc::clone(&field.0);
     let config = Arc::clone(&config.0);
-    let n = field.read().frozen_cells.shape()[0];
+    let n = field.read().cells.shape()[0];
     let mut state = State::new(n, config.read().rho);
 
     std::thread::spawn(move || loop {
@@ -74,7 +74,10 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
 
         if field.read().step == 0 {
             state = State::new(n, rho);
-            field.write().frozen_cells = state.a.clone();
+            field.write().cells =
+                Zip::from(&state.a)
+                    .and(&state.c)
+                    .par_map_collect(|&a, &c| if a { c } else { 0.0 });
         }
         if !field.read().is_running {
             continue;
@@ -86,7 +89,9 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
         }
         field.step += 1;
         state.update(beta, alpha, theta, kappa, mu, gamma, sigma);
-        field.frozen_cells = state.a.clone();
+        field.cells = Zip::from(&state.a)
+            .and(&state.c)
+            .par_map_collect(|&a, &c| if a { c } else { 0.0 });
     });
 }
 

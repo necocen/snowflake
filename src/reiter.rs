@@ -91,7 +91,7 @@ pub fn update_grid(s: &mut Array2<f32>, gamma: f32, alpha: f32) {
 fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
     let field = Arc::clone(&field.0);
     let config = Arc::clone(&config.0);
-    let n = field.read().frozen_cells.shape()[0];
+    let n = field.read().cells.shape()[0];
     let mut cells = init_grid(n, config.read().beta);
 
     std::thread::spawn(move || loop {
@@ -101,7 +101,7 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
 
         if field.read().step == 0 {
             cells = init_grid(n, beta);
-            field.write().frozen_cells = cells.map(|&x| x >= 1.0);
+            field.write().cells = cells.mapv(|x| if x >= 1.0 { x } else { 0.0 });
         }
         if !field.read().is_running {
             continue;
@@ -109,7 +109,7 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
         let mut field = field.write();
         field.step += 1;
         update_grid(&mut cells, gamma, alpha);
-        field.frozen_cells = cells.map(|&x| x >= 1.0);
+        field.cells = cells.mapv(|x| if x >= 1.0 { x } else { 0.0 });
     });
 }
 
