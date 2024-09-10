@@ -1,6 +1,6 @@
 # Snowflake Simulator
 
-![Demo](./img/demo.gif)
+![Demo](./img/demo.gif "Animation showing the progression of a snow crystal growth simulation")
 
 ----
 
