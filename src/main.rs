@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use ndarray::Array2;
 use parking_lot::RwLock;
@@ -19,7 +19,7 @@ fn main() {
         // .add_plugins(reiter::ReiterSimulatorPlugin)
         .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
         .add_plugins(visualization::VisualizationPlugin)
-        .add_systems(Startup, start_simulation)
+        .add_systems(Startup, (start_simulation, set_window_title))
         .add_systems(Update, configure_ui)
         .run();
 }
@@ -115,4 +115,10 @@ fn configure_ui(
             }
         });
     });
+}
+
+fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
+    if let Ok(mut window) = window_query.get_single_mut() {
+        window.title = "Snowflake Simulator".to_string();
+    }
 }
