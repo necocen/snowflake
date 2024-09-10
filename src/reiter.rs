@@ -116,12 +116,11 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
 fn configure_ui(mut contexts: EguiContexts, config: Res<SimulationConfig>) {
     egui::Window::new("Reiter's Snowflake").show(contexts.ctx_mut(), |ui| {
         ui.vertical(|ui| {
-            ui.add(egui::Slider::new(&mut config.0.write().alpha, 0.0..=2.0).text("alpha"));
-            // TODO: 実行中に背景場を変えられるような実装が必要で、それはメソッドにしないといけない
-            ui.add(egui::Slider::new(&mut config.0.write().beta, 0.0..=1.0).text("beta"));
+            ui.add(egui::Slider::new(&mut config.0.write().alpha, 0.0..=2.0).text("α: diffusion constant"));
+            ui.add(egui::Slider::new(&mut config.0.write().beta, 0.0..=1.0).text("β: background field"));
             ui.add(
                 egui::Slider::new(&mut config.0.write().gamma, 0.0..=1.0)
-                    .text("gamma")
+                    .text("γ: addition constant")
                     .logarithmic(true),
             );
         });
