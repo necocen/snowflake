@@ -3,6 +3,7 @@ use std::sync::Arc;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use ndarray::{Array2, Zip};
+use ndarray_rand::{rand_distr::Standard, RandomExt as _};
 use parking_lot::RwLock;
 
 use crate::{Field, ResetSimulation};
@@ -233,7 +234,16 @@ impl State {
             });
 
         // (v) Noise
-        // TODO: ノイズの実装
+        if sigma.abs() > 0.0 {
+            let noise = Array2::<bool>::random(d_new.raw_dim(), Standard);
+            Zip::from(&mut d_new).and(&noise).par_for_each(|d, &noise| {
+                if noise {
+                    *d *= 1.0 + sigma;
+                } else {
+                    *d *= 1.0 - sigma;
+                }
+            });
+        }
 
         self.a = a_new;
         self.b = b_new;
