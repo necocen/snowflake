@@ -78,7 +78,7 @@ fn update_visualization(
     mut query: Query<(&mut Cell, &mut Visibility, &mut Handle<ColorMaterial>)>,
     material_handles: Res<MaterialHandles>,
 ) {
-    let alphas = {
+    let new_values = {
         let field = field.0.read();
         let max = field.cells.fold(0.0f32, |a, &b| a.max(b));
         let min = field
@@ -89,13 +89,14 @@ fn update_visualization(
 
     for (mut cell, mut visibility, mut material_handle) in query.iter_mut() {
         let Cell(i, j, value) = &mut *cell;
-        let new_value = (alphas[[*i, *j]] * 255.0) as u8;
+        let new_value = (new_values[[*i, *j]] * 255.0) as u8;
         if new_value > 0 {
             if *value == new_value {
                 continue;
             }
             *value = new_value;
-            *material_handle = material_handles.handles[(255 - *value) as usize].clone();
+            let alpha = 255 - *value;
+            *material_handle = material_handles.handles[alpha as usize].clone();
             *visibility = Visibility::Visible;
         } else {
             *visibility = Visibility::Hidden;
