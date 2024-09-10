@@ -38,7 +38,12 @@ fn setup(
     field: Res<Field>,
     coordinates: Res<Coordinates>,
 ) {
-    commands.spawn(Camera2dBundle::default());
+    let mut transform = Transform::default();
+    transform.rotate_z(30f32.to_radians());
+    commands.spawn(Camera2dBundle {
+        transform,
+        ..default()
+    });
     let n = field.0.read().cells.shape()[0];
     let hexagon =
         Mesh2dHandle(meshes.add(RegularPolygon::new(coordinates.scale / f32::sqrt(3.0), 6)));
