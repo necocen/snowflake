@@ -10,5 +10,6 @@ fnv = "1.0.7"
 ndarray = { version = "0.16.1", features = ["rayon"] }
 ndarray-rand = "0.15.0"
 parking_lot = "0.12.3"
+stl_io = "0.8.2"
 svg = "0.17.0"
 tracing = "0.1.40"

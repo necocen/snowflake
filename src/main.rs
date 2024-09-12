@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fs::OpenOptions, sync::Arc};
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
@@ -8,6 +8,7 @@ use svg::node::element::{path::Data, Path, SVG};
 
 mod gravner_griffeath;
 mod reiter;
+mod stl;
 mod utils;
 mod visualization;
 
@@ -74,6 +75,16 @@ impl FieldInner {
             .add(path);
         document
     }
+
+    pub fn write_to_stl(&self) -> std::io::Result<()> {
+        let facets = stl::cells_to_facets(&self.cells, 0.3, 1.5);
+        let triangles = stl::calculate_normal(facets);
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open("mesh.stl")?;
+        stl_io::write_stl(&mut file, triangles.iter())
+    }
 }
 
 impl Default for FieldInner {
@@ -102,10 +113,15 @@ fn configure_ui(
                     field.is_running = !field.is_running;
                 }
                 if ui.button("Save").clicked() {
-                    if let Err(e) = svg::save("snowflake.svg", &field.0.read().write_to_svg()) {
-                        tracing::error!("Failed to save SVG: {}", e);
+                    // if let Err(e) = svg::save("snowflake.svg", &field.0.read().write_to_svg()) {
+                    //     tracing::error!("Failed to save SVG: {}", e);
+                    // } else {
+                    //     tracing::info!("Saved SVG");
+                    // }
+                    if let Err(e) = field.0.read().write_to_stl() {
+                        tracing::error!("Failed to save STL: {}", e);
                     } else {
-                        tracing::info!("Saved SVG");
+                        tracing::info!("Saved STL");
                     }
                 }
             }
