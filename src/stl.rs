@@ -1,5 +1,5 @@
 use bevy::math::Vec3;
-use fnv::FnvHashMap;
+use fnv::{FnvHashMap, FnvHashSet};
 use ndarray::Array2;
 use stl_io::{Normal, Triangle, Vertex};
 
@@ -11,7 +11,8 @@ pub fn cells_to_facets(cells: &Array2<f32>, xy_scale: f32, z_scale: f32) -> Vec<
     let x_offset = (n as f32 - 1.0) * xy_scale / 2.0;
     let y_offset = (n as f32 - 1.0) * xy_scale / 3.0f32.sqrt();
     let mut facets = Vec::new();
-    let mut segments: FnvHashMap<(usize, usize), (usize, usize)> = FnvHashMap::default();
+    let mut segments: FnvHashMap<(usize, usize), FnvHashSet<(usize, usize)>> =
+        FnvHashMap::default();
     let directions0 = [(0, 0), (1, 0), (0, 1)];
     let directions1 = [(1, 0), (1, 1), (0, 1)];
     let sqrt3_2 = 3.0f32.sqrt() / 2.0;
@@ -69,14 +70,14 @@ pub fn cells_to_facets(cells: &Array2<f32>, xy_scale: f32, z_scale: f32) -> Vec<
                         i + directions0[(k + 1) % 3].0,
                         j + directions0[(k + 1) % 3].1,
                     );
-                    if let Some(&reverse_start) = segments.get(&end) {
-                        if reverse_start == start {
+                    if let Some(end_set) = segments.get_mut(&end) {
+                        if !end_set.remove(&start) {
+                            segments.entry(start).or_default().insert(end);
+                        } else if end_set.is_empty() {
                             segments.remove(&end);
-                        } else {
-                            segments.insert(start, end);
                         }
                     } else {
-                        segments.insert(start, end);
+                        segments.entry(start).or_default().insert(end);
                     }
                 }
             }
@@ -87,14 +88,14 @@ pub fn cells_to_facets(cells: &Array2<f32>, xy_scale: f32, z_scale: f32) -> Vec<
                         i + directions1[(k + 1) % 3].0,
                         j + directions1[(k + 1) % 3].1,
                     );
-                    if let Some(&reverse_start) = segments.get(&end) {
-                        if reverse_start == start {
+                    if let Some(end_set) = segments.get_mut(&end) {
+                        if !end_set.remove(&start) {
+                            segments.entry(start).or_default().insert(end);
+                        } else if end_set.is_empty() {
                             segments.remove(&end);
-                        } else {
-                            segments.insert(start, end);
                         }
                     } else {
-                        segments.insert(start, end);
+                        segments.entry(start).or_default().insert(end);
                     }
                 }
             }
@@ -106,7 +107,11 @@ pub fn cells_to_facets(cells: &Array2<f32>, xy_scale: f32, z_scale: f32) -> Vec<
         let start = *segments.keys().next().unwrap();
         let mut contour = vec![start];
         let mut current = start;
-        while let Some(&next) = segments.get(&current) {
+        while let Some(next_set) = segments.get_mut(&current) {
+            if next_set.len() != 1 {
+                tracing::warn!("Should be 1");
+            }
+            let next = *next_set.iter().next().unwrap();
             contour.push(next);
             segments.remove(&current);
             current = next;
