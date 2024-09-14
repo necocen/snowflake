@@ -1,15 +1,13 @@
-use std::{fs::OpenOptions, sync::Arc};
+use std::sync::Arc;
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use ndarray::Array2;
 use parking_lot::RwLock;
-use svg::node::element::{path::Data, Path, SVG};
 
 mod gravner_griffeath;
 mod reiter;
 mod stl;
-mod utils;
 mod visualization;
 
 fn main() {
@@ -50,41 +48,6 @@ impl FieldInner {
             is_running: false,
         }
     }
-
-    pub fn write_to_svg(&self) -> SVG {
-        let n = self.cells.shape()[0];
-        let width = 1.5 * n as f32;
-        let height = f32::sqrt(3.0) * n as f32 / 2.0;
-        let contours = utils::extract_contours(&self.cells.mapv(|c| c > 0.0), 1.0);
-        let mut data = Data::new();
-        for contour in contours {
-            let mut iter = contour.iter();
-            if let Some((x, y)) = iter.next() {
-                data = data.move_to((*x, *y));
-            }
-            for (x, y) in iter {
-                data = data.line_to((*x, *y));
-            }
-            data = data.close();
-        }
-        let path = Path::new().set("fill", "black").set("d", data);
-        let document = svg::Document::new()
-            .set("viewBox", (0, 0, width, height))
-            .set("width", width)
-            .set("height", height)
-            .add(path);
-        document
-    }
-
-    pub fn write_to_stl(&self) -> std::io::Result<()> {
-        let facets = stl::cells_to_facets(&self.cells, 0.3, 1.5);
-        let triangles = stl::calculate_normal(facets);
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open("mesh.stl")?;
-        stl_io::write_stl(&mut file, triangles.iter())
-    }
 }
 
 impl Default for FieldInner {
@@ -112,16 +75,14 @@ fn configure_ui(
                     let mut field = field.0.write();
                     field.is_running = !field.is_running;
                 }
-                if ui.button("Save").clicked() {
-                    // if let Err(e) = svg::save("snowflake.svg", &field.0.read().write_to_svg()) {
-                    //     tracing::error!("Failed to save SVG: {}", e);
-                    // } else {
-                    //     tracing::info!("Saved SVG");
-                    // }
-                    if let Err(e) = field.0.read().write_to_stl() {
-                        tracing::error!("Failed to save STL: {}", e);
-                    } else {
-                        tracing::info!("Saved STL");
+                if ui.button("Save STL").clicked() {
+                    match stl::write_to_stl(&field) {
+                        Ok(path) => {
+                            tracing::info!("Saved STL: {}", path.display());
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to save STL: {e}");
+                        }
                     }
                 }
             }
