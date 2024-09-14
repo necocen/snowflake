@@ -20,6 +20,10 @@ As it's built with Rust and Bevy, it should theoretically be possible to make it
 cargo run --release
 ```
 
+You can export STL file by pressing "Save STL" button on the control panel. The exported file will be placed in your working directory.
+
+![STL](./img/stl.png "STL file exported from the simulation (opened in Autodesk Fusion)")
+
 ## References
 
 1. Gravner, J., Griffeath, D. (2008). [Modeling snow crystal growth II: A mesoscopic lattice map with plausible dynamics](https://doi.org/10.1016/j.physd.2007.09.008). Physica D: Nonlinear Phenomena, 237(3), 385-404.
