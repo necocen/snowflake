@@ -135,11 +135,8 @@ fn configure_ui(mut contexts: EguiContexts, config: Res<SimulationConfig>) {
 
 fn event_listener(field: Res<Field>, mut reset_events: EventReader<ControlEvent>) {
     for event in reset_events.read() {
-        match event {
-            ControlEvent::Reset => {
-                field.0.write().step = 0;
-            }
-            _ => {}
+        if let ControlEvent::Reset = event {
+            field.0.write().step = 0;
         }
     }
 }

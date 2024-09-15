@@ -116,7 +116,7 @@ impl SimulationConfigLogInner {
             writer.serialize(record)?;
         }
         writer.flush()?;
-        Ok(path.into())
+        Ok(path)
     }
 }
 
@@ -130,19 +130,9 @@ fn setup(config: Res<SimulationConfig>, log: Res<SimulationConfigLog>, field: Re
 
     std::thread::spawn(move || loop {
         let config = *config.read();
-        let SimulationConfigInner {
-            rho,
-            beta,
-            alpha,
-            theta,
-            kappa,
-            mu,
-            gamma,
-            sigma,
-        } = config;
         if field.read().step == 0 {
             log.write().log.clear();
-            state = State::new(n, rho);
+            state = State::new(n, config.rho);
             field.write().cells =
                 Zip::from(&state.a)
                     .and(&state.c)
@@ -164,7 +154,7 @@ fn setup(config: Res<SimulationConfig>, log: Res<SimulationConfigLog>, field: Re
             tracing::debug!("step: {}, total_mass: {total_mass}", field.step);
         }
         field.step += 1;
-        state.update(beta, alpha, theta, kappa, mu, gamma, sigma);
+        state.update(config);
         field.cells = Zip::from(&state.a)
             .and(&state.c)
             .par_map_collect(|&a, &c| if a { c } else { 0.0 });
@@ -196,14 +186,18 @@ impl State {
 
     fn update(
         &mut self,
-        beta: f32,
-        alpha: f32,
-        theta: f32,
-        kappa: f32,
-        mu: f32,
-        gamma: f32,
-        sigma: f32,
+        config: SimulationConfigInner,
     ) {
+        let SimulationConfigInner {
+            beta,
+            alpha,
+            theta,
+            kappa,
+            mu,
+            gamma,
+            sigma,
+            ..
+        } = config;
         let n = self.a.shape()[0];
 
         let neighbors = Zip::indexed(&self.a).par_map_collect(|(i, j), _| {
