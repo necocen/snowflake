@@ -21,6 +21,7 @@ impl Plugin for GravnerGrifeeathSimulatorPlugin {
 #[derive(Resource, Default)]
 struct SimulationConfig(pub Arc<RwLock<SimulationConfigInner>>);
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct SimulationConfigInner {
     /// vapor density parameter
     pub rho: f32,
@@ -60,8 +61,10 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
     let config = Arc::clone(&config.0);
     let n = field.read().cells.shape()[0];
     let mut state = State::new(n, config.read().rho);
+    let mut old_config = SimulationConfigInner::default();
 
     std::thread::spawn(move || loop {
+        let config = *config.read();
         let SimulationConfigInner {
             rho,
             beta,
@@ -71,8 +74,7 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
             mu,
             gamma,
             sigma,
-        } = *config.read();
-
+        } = config;
         if field.read().step == 0 {
             state = State::new(n, rho);
             field.write().cells =
@@ -83,10 +85,14 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
         if !field.read().is_running {
             continue;
         }
+        if old_config != config {
+            tracing::info!("Step: {}, {config:?}", field.read().step);
+            old_config = config;
+        }
         let mut field = field.write();
         if field.step % 100 == 0 {
             let total_mass = state.b.sum() + state.c.sum() + state.d.sum();
-            tracing::info!("step: {}, total_mass: {total_mass}", field.step);
+            tracing::debug!("step: {}, total_mass: {total_mass}", field.step);
         }
         field.step += 1;
         state.update(beta, alpha, theta, kappa, mu, gamma, sigma);
