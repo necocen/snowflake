@@ -1,18 +1,20 @@
-use std::sync::Arc;
+use std::{fs::OpenOptions, path::PathBuf, sync::Arc};
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
+use chrono::{DateTime, Local};
 use ndarray::{Array2, Zip};
 use ndarray_rand::{rand_distr::Standard, RandomExt as _};
 use parking_lot::RwLock;
 
-use crate::{Field, ResetSimulation};
+use crate::{ControlEvent, Field};
 
 pub struct GravnerGrifeeathSimulatorPlugin;
 
 impl Plugin for GravnerGrifeeathSimulatorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationConfig>();
+        app.init_resource::<SimulationConfigLog>();
         app.add_systems(Startup, setup);
         app.add_systems(Update, (event_listener, configure_ui));
     }
@@ -56,9 +58,72 @@ impl Default for SimulationConfigInner {
     }
 }
 
-fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
+#[derive(Resource, Default)]
+struct SimulationConfigLog(pub Arc<RwLock<SimulationConfigLogInner>>);
+
+#[derive(Debug, serde::Serialize)]
+struct SimulationConfigLogRecord {
+    pub step: u64,
+    #[serde(rename = "ρ")]
+    pub rho: f32,
+    #[serde(rename = "β")]
+    pub beta: f32,
+    #[serde(rename = "α")]
+    pub alpha: f32,
+    #[serde(rename = "θ")]
+    pub theta: f32,
+    #[serde(rename = "κ")]
+    pub kappa: f32,
+    #[serde(rename = "μ")]
+    pub mu: f32,
+    #[serde(rename = "γ")]
+    pub gamma: f32,
+    #[serde(rename = "σ")]
+    pub sigma: f32,
+}
+
+impl SimulationConfigLogRecord {
+    fn new(step: u64, config: &SimulationConfigInner) -> Self {
+        Self {
+            step,
+            rho: config.rho,
+            beta: config.beta,
+            alpha: config.alpha,
+            theta: config.theta,
+            kappa: config.kappa,
+            mu: config.mu,
+            gamma: config.gamma,
+            sigma: config.sigma,
+        }
+    }
+}
+
+#[derive(Default)]
+struct SimulationConfigLogInner {
+    log: Vec<SimulationConfigLogRecord>,
+}
+
+impl SimulationConfigLogInner {
+    fn save_to_csv(&self, now: DateTime<Local>) -> std::io::Result<PathBuf> {
+        let filename = format!("snowflake-{}.csv", now.format("%Y%m%d%H%M%S"));
+        let path = PathBuf::from(&filename);
+        let file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)?;
+        let mut writer = csv::Writer::from_writer(file);
+        for record in &self.log {
+            writer.serialize(record)?;
+        }
+        writer.flush()?;
+        Ok(path.into())
+    }
+}
+
+fn setup(config: Res<SimulationConfig>, log: Res<SimulationConfigLog>, field: Res<Field>) {
     let field = Arc::clone(&field.0);
     let config = Arc::clone(&config.0);
+    let log = Arc::clone(&log.0);
     let n = field.read().cells.shape()[0];
     let mut state = State::new(n, config.read().rho);
     let mut old_config = SimulationConfigInner::default();
@@ -76,6 +141,7 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
             sigma,
         } = config;
         if field.read().step == 0 {
+            log.write().log.clear();
             state = State::new(n, rho);
             field.write().cells =
                 Zip::from(&state.a)
@@ -85,8 +151,11 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
         if !field.read().is_running {
             continue;
         }
-        if old_config != config {
+        if old_config != config || field.read().step == 0 {
             tracing::info!("Step: {}, {config:?}", field.read().step);
+            log.write()
+                .log
+                .push(SimulationConfigLogRecord::new(field.read().step, &config));
             old_config = config;
         }
         let mut field = field.write();
@@ -258,9 +327,25 @@ impl State {
     }
 }
 
-fn event_listener(field: Res<Field>, mut reset_events: EventReader<ResetSimulation>) {
-    for _ in reset_events.read() {
-        field.0.write().step = 0;
+fn event_listener(
+    field: Res<Field>,
+    log: Res<SimulationConfigLog>,
+    mut reset_events: EventReader<ControlEvent>,
+) {
+    for event in reset_events.read() {
+        match event {
+            ControlEvent::Reset => {
+                field.0.write().step = 0;
+            }
+            ControlEvent::Save(now) => match log.0.read().save_to_csv(*now) {
+                Ok(path) => {
+                    tracing::info!("Saved CSV: {}", path.display());
+                }
+                Err(e) => {
+                    tracing::error!("Failed to save CSV: {e}");
+                }
+            },
+        }
     }
 }
 

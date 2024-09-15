@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use chrono::{DateTime, Local};
 use ndarray::Array2;
 use parking_lot::RwLock;
 
@@ -13,7 +14,7 @@ mod visualization;
 fn main() {
     App::new()
         .init_resource::<Field>()
-        .add_event::<ResetSimulation>()
+        .add_event::<ControlEvent>()
         .add_plugins((DefaultPlugins, EguiPlugin))
         // .add_plugins(reiter::ReiterSimulatorPlugin)
         .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
@@ -28,8 +29,11 @@ fn start_simulation(field: Res<Field>) {
     field.is_running = true;
 }
 
-#[derive(Event, Default)]
-struct ResetSimulation;
+#[derive(Event)]
+enum ControlEvent {
+    Reset,
+    Save(DateTime<Local>),
+}
 
 #[derive(Resource, Default)]
 pub struct Field(pub Arc<RwLock<FieldInner>>);
@@ -59,7 +63,7 @@ impl Default for FieldInner {
 fn configure_ui(
     mut contexts: EguiContexts,
     field: Res<Field>,
-    mut reset_events: EventWriter<ResetSimulation>,
+    mut events: EventWriter<ControlEvent>,
 ) {
     egui::Window::new("Control").show(contexts.ctx_mut(), |ui| {
         let FieldInner {
@@ -76,7 +80,9 @@ fn configure_ui(
                     field.is_running = !field.is_running;
                 }
                 if ui.button("Save STL").clicked() {
-                    match stl::write_to_stl(&field) {
+                    let now = Local::now();
+                    events.send(ControlEvent::Save(now));
+                    match stl::write_to_stl(&field, now) {
                         Ok(path) => {
                             tracing::info!("Saved STL: {}", path.display());
                         }
@@ -87,7 +93,7 @@ fn configure_ui(
                 }
             }
             if ui.button("Reset").clicked() {
-                reset_events.send(ResetSimulation);
+                events.send(ControlEvent::Reset);
                 tracing::info!("Reset");
             }
         });

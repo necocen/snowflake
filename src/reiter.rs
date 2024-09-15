@@ -5,7 +5,7 @@ use bevy_egui::{egui, EguiContexts};
 use ndarray::{Array2, Zip};
 use parking_lot::RwLock;
 
-use crate::{Field, ResetSimulation};
+use crate::{ControlEvent, Field};
 
 pub struct ReiterSimulatorPlugin;
 
@@ -116,8 +116,14 @@ fn setup(config: Res<SimulationConfig>, field: Res<Field>) {
 fn configure_ui(mut contexts: EguiContexts, config: Res<SimulationConfig>) {
     egui::Window::new("Reiter's Snowflake").show(contexts.ctx_mut(), |ui| {
         ui.vertical(|ui| {
-            ui.add(egui::Slider::new(&mut config.0.write().alpha, 0.0..=2.0).text("α: diffusion constant"));
-            ui.add(egui::Slider::new(&mut config.0.write().beta, 0.0..=1.0).text("β: background field"));
+            ui.add(
+                egui::Slider::new(&mut config.0.write().alpha, 0.0..=2.0)
+                    .text("α: diffusion constant"),
+            );
+            ui.add(
+                egui::Slider::new(&mut config.0.write().beta, 0.0..=1.0)
+                    .text("β: background field"),
+            );
             ui.add(
                 egui::Slider::new(&mut config.0.write().gamma, 0.0..=1.0)
                     .text("γ: addition constant")
@@ -127,8 +133,13 @@ fn configure_ui(mut contexts: EguiContexts, config: Res<SimulationConfig>) {
     });
 }
 
-fn event_listener(field: Res<Field>, mut reset_events: EventReader<ResetSimulation>) {
-    for _ in reset_events.read() {
-        field.0.write().step = 0;
+fn event_listener(field: Res<Field>, mut reset_events: EventReader<ControlEvent>) {
+    for event in reset_events.read() {
+        match event {
+            ControlEvent::Reset => {
+                field.0.write().step = 0;
+            }
+            _ => {}
+        }
     }
 }

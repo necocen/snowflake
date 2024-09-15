@@ -1,7 +1,7 @@
 use std::{fs::OpenOptions, path::PathBuf};
 
 use bevy::math::Vec3;
-use chrono::Local;
+use chrono::{DateTime, Local};
 use fnv::{FnvHashMap, FnvHashSet};
 use ndarray::Array2;
 use stl_io::{Normal, Triangle, Vertex};
@@ -31,9 +31,8 @@ impl Facet {
     }
 }
 
-pub fn write_to_stl(field: &Field) -> std::io::Result<PathBuf> {
+pub fn write_to_stl(field: &Field, now: DateTime<Local>) -> std::io::Result<PathBuf> {
     let triangles = cells_to_triangles(&field.0.read().cells, 0.025, 0.1);
-    let now = Local::now();
     let filename = format!("snowflake-{}.stl", now.format("%Y%m%d%H%M%S"));
     let path = PathBuf::from(&filename);
     let mut file = OpenOptions::new()
