@@ -23,8 +23,8 @@ impl Plugin for GravnerGrifeeathSimulatorPlugin {
 #[derive(Resource, Default)]
 struct SimulationConfig(pub Arc<RwLock<SimulationConfigInner>>);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct SimulationConfigInner {
+#[derive(Debug, Clone, Copy, PartialEq, Resource)]
+pub struct SimulationConfigInner {
     /// vapor density parameter
     pub rho: f32,
     /// tip attachment threshold for b (anisotropy parameter)
@@ -62,7 +62,7 @@ impl Default for SimulationConfigInner {
 struct SimulationConfigLog(pub Arc<RwLock<SimulationConfigLogInner>>);
 
 #[derive(Debug, serde::Serialize)]
-struct SimulationConfigLogRecord {
+pub struct SimulationConfigLogRecord {
     pub step: u64,
     #[serde(rename = "ρ")]
     pub rho: f32,
@@ -83,7 +83,7 @@ struct SimulationConfigLogRecord {
 }
 
 impl SimulationConfigLogRecord {
-    fn new(step: u64, config: &SimulationConfigInner) -> Self {
+    pub fn new(step: u64, config: &SimulationConfigInner) -> Self {
         Self {
             step,
             rho: config.rho,
@@ -98,13 +98,13 @@ impl SimulationConfigLogRecord {
     }
 }
 
-#[derive(Default)]
-struct SimulationConfigLogInner {
+#[derive(Default, Resource)]
+pub struct SimulationConfigLogInner {
     log: Vec<SimulationConfigLogRecord>,
 }
 
 impl SimulationConfigLogInner {
-    fn save_to_csv(&self, now: DateTime<Local>) -> std::io::Result<PathBuf> {
+    pub fn save_to_csv(&self, now: DateTime<Local>) -> std::io::Result<PathBuf> {
         let filename = format!("snowflake-{}.csv", now.format("%Y%m%d%H%M%S"));
         let path = PathBuf::from(&filename);
         let file = OpenOptions::new()
@@ -117,6 +117,14 @@ impl SimulationConfigLogInner {
         }
         writer.flush()?;
         Ok(path)
+    }
+
+    pub fn push(&mut self, record: SimulationConfigLogRecord) {
+        self.log.push(record);
+    }
+
+    pub fn clear(&mut self) {
+        self.log.clear();
     }
 }
 
@@ -131,7 +139,7 @@ fn setup(config: Res<SimulationConfig>, log: Res<SimulationConfigLog>, field: Re
     std::thread::spawn(move || loop {
         let config = *config.read();
         if field.read().step == 0 {
-            log.write().log.clear();
+            log.write().clear();
             state = State::new(n, config.rho);
             field.write().cells =
                 Zip::from(&state.a)
@@ -144,7 +152,6 @@ fn setup(config: Res<SimulationConfig>, log: Res<SimulationConfigLog>, field: Re
         if old_config != config || field.read().step == 0 {
             tracing::info!("Step: {}, {config:?}", field.read().step);
             log.write()
-                .log
                 .push(SimulationConfigLogRecord::new(field.read().step, &config));
             old_config = config;
         }
@@ -184,10 +191,7 @@ impl State {
         Self { a, b, c, d }
     }
 
-    fn update(
-        &mut self,
-        config: SimulationConfigInner,
-    ) {
+    fn update(&mut self, config: SimulationConfigInner) {
         let SimulationConfigInner {
             beta,
             alpha,

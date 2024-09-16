@@ -7,6 +7,7 @@ use ndarray::Array2;
 use parking_lot::RwLock;
 
 mod gravner_griffeath;
+mod gravner_griffeath_wasm;
 mod reiter;
 mod stl;
 mod visualization;
