@@ -14,6 +14,7 @@ ndarray-rand = "0.15.0"
 parking_lot = "0.12.3"
 serde = { version = "1.0.210", features = ["derive"] }
 stl_io = "0.8.2"
+svg = "0.17.0"
 tracing = "0.1.40"
 
 [profile.release-wasm]

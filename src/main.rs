@@ -10,6 +10,7 @@ mod gravner_griffeath;
 mod gravner_griffeath_wasm;
 mod reiter;
 mod stl;
+mod svg;
 mod visualization;
 
 fn main() {
@@ -89,6 +90,18 @@ fn configure_ui(
                         }
                         Err(e) => {
                             tracing::error!("Failed to save STL: {e}");
+                        }
+                    }
+                }
+                if ui.button("Save SVG").clicked() {
+                    let now = Local::now();
+                    events.send(ControlEvent::Save(now));
+                    match svg::write_to_svg(&field, now) {
+                        Ok(path) => {
+                            tracing::info!("Saved SVG: {}", path.display());
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to save SVG: {e}");
                         }
                     }
                 }
