@@ -94,7 +94,7 @@ fn update_visualization(
 
     for (mut cell, mut visibility, mut material_handle) in query.iter_mut() {
         let Cell(i, j, value) = &mut *cell;
-        let new_value = (new_values[[*i, *j]] * 255.0) as u8;
+        let new_value = (new_values[[*i, *j]] * 254.0) as u8; // 0..=254。最終的には1..=255になる。0は透明になってしまうので1から始まるようにする。
         if new_value > 0 {
             if *value == new_value {
                 continue;
