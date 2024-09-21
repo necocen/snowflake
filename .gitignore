@@ -30,7 +30,8 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-# Saved STL/CSV files
+# Saved STL/SVG/PNG/CSV files
 snowflake-*.stl
 snowflake-*.csv
 snowflake-*.svg
+snowflake-*.png

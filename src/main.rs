@@ -8,6 +8,7 @@ use parking_lot::RwLock;
 
 mod gravner_griffeath;
 mod gravner_griffeath_wasm;
+mod png;
 mod reiter;
 mod stl;
 mod svg;
@@ -102,6 +103,18 @@ fn configure_ui(
                         }
                         Err(e) => {
                             tracing::error!("Failed to save SVG: {e}");
+                        }
+                    }
+                }
+                if ui.button("Save PNG").clicked() {
+                    let now = Local::now();
+                    events.send(ControlEvent::Save(now));
+                    match png::write_to_png(&field, now) {
+                        Ok(path) => {
+                            tracing::info!("Saved PNG: {}", path.display());
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to save PNG: {e}");
                         }
                     }
                 }

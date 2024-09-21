@@ -19,7 +19,7 @@ pub fn write_to_svg(field: &Field, now: DateTime<Local>) -> std::io::Result<Path
     Ok(path)
 }
 
-fn cells_to_document(cells: &Array2<f32>, size: f32) -> svg::Document {
+pub fn cells_to_document(cells: &Array2<f32>, size: f32) -> svg::Document {
     let n = cells.shape()[0];
     let mut group = Group::new();
     let scale = size * 2.0 / 3.0f32.sqrt() / n as f32;
