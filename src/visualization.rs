@@ -1,4 +1,4 @@
-use bevy::{prelude::*, sprite::Mesh2dHandle};
+use bevy::prelude::*;
 
 use crate::Field;
 
@@ -40,13 +40,9 @@ fn setup(
 ) {
     let mut transform = Transform::default();
     transform.rotate_z(30f32.to_radians());
-    commands.spawn(Camera2dBundle {
-        transform,
-        ..default()
-    });
+    commands.spawn((Camera2d, transform));
     let n = field.0.read().cells.shape()[0];
-    let hexagon =
-        Mesh2dHandle(meshes.add(RegularPolygon::new(coordinates.scale / f32::sqrt(3.0), 6)));
+    let hexagon = meshes.add(RegularPolygon::new(coordinates.scale / f32::sqrt(3.0), 6));
     let material_handles: Vec<Handle<ColorMaterial>> = (0..256)
         .map(|i| {
             let alpha = i as f32 / 255.0;
@@ -66,13 +62,9 @@ fn setup(
             ) * coordinates.scale;
             commands.spawn((
                 Cell(i, j, 0),
-                ColorMesh2dBundle {
-                    visibility: Visibility::Hidden,
-                    mesh: hexagon.clone(),
-                    material: material_handles[0].clone(),
-                    transform: Transform::from_translation(translation),
-                    ..default()
-                },
+                Mesh2d(hexagon.clone()),
+                MeshMaterial2d(material_handles[0].clone()),
+                Transform::from_translation(translation),
             ));
         }
     }
@@ -80,7 +72,11 @@ fn setup(
 
 fn update_visualization(
     field: Res<Field>,
-    mut query: Query<(&mut Cell, &mut Visibility, &mut Handle<ColorMaterial>)>,
+    mut query: Query<(
+        &mut Cell,
+        &mut Visibility,
+        &mut MeshMaterial2d<ColorMaterial>,
+    )>,
     material_handles: Res<MaterialHandles>,
 ) {
     let new_values = {
@@ -92,7 +88,7 @@ fn update_visualization(
         (&field.cells - min) / (max - min)
     };
 
-    for (mut cell, mut visibility, mut material_handle) in query.iter_mut() {
+    for (mut cell, mut visibility, mut material) in query.iter_mut() {
         let Cell(i, j, value) = &mut *cell;
         let new_value = (new_values[[*i, *j]] * 254.0) as u8; // 0..=254。最終的には1..=255になる。0は透明になってしまうので1から始まるようにする。
         if new_value > 0 {
@@ -101,7 +97,7 @@ fn update_visualization(
             }
             *value = new_value;
             let alpha = 255 - *value;
-            *material_handle = material_handles.handles[alpha as usize].clone();
+            *material = MeshMaterial2d(material_handles.handles[alpha as usize].clone());
             *visibility = Visibility::Visible;
         } else {
             *visibility = Visibility::Hidden;
