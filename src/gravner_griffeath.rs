@@ -177,16 +177,14 @@ struct State {
 
 impl State {
     fn new(n: usize, rho: f32) -> Self {
+        let center = [n / 2, n / 2];
         let mut a = Array2::<bool>::default((n, n));
-        a[[n / 2, n / 2]] = true;
-
+        a[center] = true;
         let b = Array2::<f32>::zeros((n, n));
-
         let mut c = Array2::<f32>::zeros((n, n));
-        c[[n / 2, n / 2]] = 1.0;
-
+        c[center] = 1.0;
         let mut d = Array2::<f32>::ones((n, n)) * rho;
-        d[[n / 2, n / 2]] = 0.0;
+        d[center] = 0.0;
 
         Self { a, b, c, d }
     }
