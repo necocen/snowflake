@@ -8,9 +8,9 @@ use crate::{
     ControlEvent, Field,
 };
 
-pub struct GravnerGrifeeathSimulatorWasmPlugin;
+pub struct GravnerGrifeeathSimulatorSerialPlugin;
 
-impl Plugin for GravnerGrifeeathSimulatorWasmPlugin {
+impl Plugin for GravnerGrifeeathSimulatorSerialPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationConfigInner>();
         app.init_resource::<SimulationConfigLogInner>();
