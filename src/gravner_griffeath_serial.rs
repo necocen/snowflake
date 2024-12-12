@@ -15,9 +15,7 @@ impl Plugin for GravnerGrifeeathSimulatorSerialPlugin {
         app.init_resource::<SimulationConfigInner>();
         app.init_resource::<SimulationConfigLogInner>();
         app.init_resource::<State>();
-        app.add_systems(Update, (event_listener, configure_ui));
-        app.add_systems(FixedUpdate, update_simulation);
-        app.insert_resource(Time::<Fixed>::from_hz(50f64));
+        app.add_systems(Update, (event_listener, configure_ui, update_simulation));
     }
 }
 
