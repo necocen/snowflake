@@ -92,7 +92,7 @@ fn update_visualization(
                 continue;
             }
             *value = new_value;
-            let alpha = 255 - *value;
+            let alpha = *value + 1;
             *mesh_material = mesh_materials.0[alpha as usize].clone();
             *visibility = Visibility::Visible;
         } else {
