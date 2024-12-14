@@ -4232,6 +4232,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy_egui",
+ "cfg-if",
  "chrono",
  "csv",
  "fnv",
@@ -4242,6 +4243,7 @@ dependencies = [
  "stl_io",
  "svg",
  "tracing",
+ "wasm-bindgen",
 ]
 
 [[package]]
