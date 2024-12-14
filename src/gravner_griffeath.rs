@@ -1,11 +1,10 @@
-use std::{fs::OpenOptions, path::PathBuf, sync::Arc};
+use std::{fs::OpenOptions, path::PathBuf};
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use chrono::{DateTime, Local};
 use ndarray::{Array2, Zip};
 use ndarray_rand::{rand_distr::Standard, RandomExt as _};
-use parking_lot::RwLock;
 
 use crate::{ControlEvent, Field};
 
@@ -15,16 +14,13 @@ impl Plugin for GravnerGrifeeathSimulatorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationConfig>();
         app.init_resource::<SimulationConfigLog>();
-        app.add_systems(Startup, setup);
-        app.add_systems(Update, (event_listener, configure_ui));
+        app.init_resource::<State>();
+        app.add_systems(Update, (event_listener, configure_ui, update_simulation));
     }
 }
 
-#[derive(Resource, Default)]
-struct SimulationConfig(pub Arc<RwLock<SimulationConfigInner>>);
-
 #[derive(Debug, Clone, Copy, PartialEq, Resource)]
-pub struct SimulationConfigInner {
+pub struct SimulationConfig {
     /// vapor density parameter
     pub rho: f32,
     /// tip attachment threshold for b (anisotropy parameter)
@@ -43,7 +39,7 @@ pub struct SimulationConfigInner {
     pub sigma: f32,
 }
 
-impl Default for SimulationConfigInner {
+impl Default for SimulationConfig {
     fn default() -> Self {
         Self {
             rho: 0.5,
@@ -57,9 +53,6 @@ impl Default for SimulationConfigInner {
         }
     }
 }
-
-#[derive(Resource, Default)]
-struct SimulationConfigLog(pub Arc<RwLock<SimulationConfigLogInner>>);
 
 #[derive(Debug, serde::Serialize)]
 pub struct SimulationConfigLogRecord {
@@ -83,7 +76,7 @@ pub struct SimulationConfigLogRecord {
 }
 
 impl SimulationConfigLogRecord {
-    pub fn new(step: u64, config: &SimulationConfigInner) -> Self {
+    pub fn new(step: u64, config: &SimulationConfig) -> Self {
         Self {
             step,
             rho: config.rho,
@@ -99,11 +92,11 @@ impl SimulationConfigLogRecord {
 }
 
 #[derive(Default, Resource)]
-pub struct SimulationConfigLogInner {
+pub struct SimulationConfigLog {
     log: Vec<SimulationConfigLogRecord>,
 }
 
-impl SimulationConfigLogInner {
+impl SimulationConfigLog {
     pub fn save_to_csv(&self, now: DateTime<Local>) -> std::io::Result<PathBuf> {
         let filename = format!("snowflake-{}.csv", now.format("%Y%m%d%H%M%S"));
         let path = PathBuf::from(&filename);
@@ -128,55 +121,16 @@ impl SimulationConfigLogInner {
     }
 }
 
-fn setup(config: Res<SimulationConfig>, log: Res<SimulationConfigLog>, field: Res<Field>) {
-    let field = Arc::clone(&field.0);
-    let config = Arc::clone(&config.0);
-    let log = Arc::clone(&log.0);
-    let n = field.read().cells.shape()[0];
-    let mut state = State::new(n, config.read().rho);
-    let mut old_config = SimulationConfigInner::default();
-
-    std::thread::spawn(move || loop {
-        let config = *config.read();
-        if field.read().step == 0 {
-            log.write().clear();
-            state = State::new(n, config.rho);
-            field.write().cells =
-                Zip::from(&state.a)
-                    .and(&state.c)
-                    .par_map_collect(|&a, &c| if a { c } else { 0.0 });
-        }
-        if !field.read().is_running {
-            continue;
-        }
-        if old_config != config || field.read().step == 0 {
-            tracing::info!("Step: {}, {config:?}", field.read().step);
-            log.write()
-                .push(SimulationConfigLogRecord::new(field.read().step, &config));
-            old_config = config;
-        }
-        let mut field = field.write();
-        if field.step % 100 == 0 {
-            let total_mass = state.b.sum() + state.c.sum() + state.d.sum();
-            tracing::debug!("step: {}, total_mass: {total_mass}", field.step);
-        }
-        field.step += 1;
-        state.update(config);
-        field.cells = Zip::from(&state.a)
-            .and(&state.c)
-            .par_map_collect(|&a, &c| if a { c } else { 0.0 });
-    });
-}
-
-struct State {
-    a: Array2<bool>,
-    b: Array2<f32>,
-    c: Array2<f32>,
-    d: Array2<f32>,
+#[derive(Default, Resource)]
+pub struct State {
+    pub a: Array2<bool>,
+    pub b: Array2<f32>,
+    pub c: Array2<f32>,
+    pub d: Array2<f32>,
 }
 
 impl State {
-    fn new(n: usize, rho: f32) -> Self {
+    pub fn new(n: usize, rho: f32) -> Self {
         let center = [n / 2, n / 2];
         let mut a = Array2::<bool>::default((n, n));
         a[center] = true;
@@ -189,8 +143,8 @@ impl State {
         Self { a, b, c, d }
     }
 
-    fn update(&mut self, config: SimulationConfigInner) {
-        let SimulationConfigInner {
+    pub fn update(&mut self, config: SimulationConfig) {
+        let SimulationConfig {
             beta,
             alpha,
             theta,
@@ -323,57 +277,82 @@ impl State {
     }
 }
 
-fn event_listener(
-    field: Res<Field>,
-    log: Res<SimulationConfigLog>,
-    mut reset_events: EventReader<ControlEvent>,
-) {
+fn event_listener(field: Res<Field>, mut reset_events: EventReader<ControlEvent>) {
     for event in reset_events.read() {
         match event {
             ControlEvent::Reset => {
                 field.0.write().step = 0;
             }
-            ControlEvent::Save(now) => match log.0.read().save_to_csv(*now) {
-                Ok(path) => {
-                    tracing::info!("Saved CSV: {}", path.display());
-                }
-                Err(e) => {
-                    tracing::error!("Failed to save CSV: {e}");
-                }
-            },
+            ControlEvent::Save(_) => {
+                tracing::warn!("Saving is not supported on this platform");
+            }
         }
     }
 }
 
-fn configure_ui(mut contexts: EguiContexts, config: Res<SimulationConfig>) {
+fn update_simulation(
+    field: ResMut<Field>,
+    mut state: ResMut<State>,
+    config: Res<SimulationConfig>,
+    mut log: ResMut<SimulationConfigLog>,
+) {
+    let n = field.0.read().cells.shape()[0];
+    if field.0.read().step == 0 {
+        log.clear();
+        *state = State::new(n, config.rho);
+        field.0.write().cells =
+            Zip::from(&state.a)
+                .and(&state.c)
+                .map_collect(|&a, &c| if a { c } else { 0.0 });
+    }
+    if !field.0.read().is_running {
+        return;
+    }
+    // if old_config != config || field.0.read().step == 0 {
+    //     tracing::info!("Step: {}, {config:?}", field.read().step);
+    //     log.write()
+    //         .push(SimulationConfigLogRecord::new(field.read().step, &config));
+    //     old_config = config;
+    // }
+    let mut field = field.0.write();
+    if field.step % 100 == 0 {
+        let total_mass = state.b.sum() + state.c.sum() + state.d.sum();
+        tracing::debug!("step: {}, total_mass: {total_mass}", field.step);
+    }
+    field.step += 1;
+    state.update(*config);
+    field.cells = Zip::from(&state.a)
+        .and(&state.c)
+        .map_collect(|&a, &c| if a { c } else { 0.0 });
+}
+
+fn configure_ui(mut contexts: EguiContexts, mut config: ResMut<SimulationConfig>) {
     egui::Window::new("Gravner-Griffeath's Snowflake").show(contexts.ctx_mut(), |ui| {
         ui.vertical(|ui| {
+            ui.add(egui::Slider::new(&mut config.rho, 0.0..=1.0).text("ρ: vapor density"));
+            ui.add(egui::Slider::new(&mut config.beta, 1.0..=4.0).text("β: anisotropy"));
             ui.add(
-                egui::Slider::new(&mut config.0.write().rho, 0.0..=1.0).text("ρ: vapor density"),
-            );
-            ui.add(egui::Slider::new(&mut config.0.write().beta, 1.0..=4.0).text("β: anisotropy"));
-            ui.add(
-                egui::Slider::new(&mut config.0.write().alpha, 0.0..=1.0)
+                egui::Slider::new(&mut config.alpha, 0.0..=1.0)
                     .text("α: attachment threshold for b"),
             );
             ui.add(
-                egui::Slider::new(&mut config.0.write().theta, 0.0..=0.5)
+                egui::Slider::new(&mut config.theta, 0.0..=0.5)
                     .text("θ: attachment threshold for d")
                     .logarithmic(true),
             );
             ui.add(
-                egui::Slider::new(&mut config.0.write().kappa, 0.0..=1.0)
+                egui::Slider::new(&mut config.kappa, 0.0..=1.0)
                     .text("κ: freezing rate")
                     .logarithmic(true),
             );
-            ui.add(egui::Slider::new(&mut config.0.write().mu, 0.0..=0.3).text("μ: melting rate"));
+            ui.add(egui::Slider::new(&mut config.mu, 0.0..=0.3).text("μ: melting rate"));
             ui.add(
-                egui::Slider::new(&mut config.0.write().gamma, 0.0..=0.01)
+                egui::Slider::new(&mut config.gamma, 0.0..=0.01)
                     .text("γ: sublimation rate")
                     .logarithmic(true),
             );
             ui.add(
-                egui::Slider::new(&mut config.0.write().sigma, 0.0..=1.0)
+                egui::Slider::new(&mut config.sigma, 0.0..=1.0)
                     .text("σ: noise")
                     .logarithmic(true),
             );

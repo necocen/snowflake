@@ -7,7 +7,7 @@ use ndarray::Array2;
 use parking_lot::RwLock;
 
 mod gravner_griffeath;
-mod gravner_griffeath_serial;
+mod gravner_griffeath_mt;
 mod png;
 mod reiter;
 mod stl;
@@ -20,7 +20,7 @@ fn main() {
         .add_event::<ControlEvent>()
         .add_plugins((DefaultPlugins, EguiPlugin))
         // .add_plugins(reiter::ReiterSimulatorPlugin)
-        .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
+        .add_plugins(gravner_griffeath_mt::GravnerGrifeeathSimulatorMTPlugin)
         .add_plugins(visualization::VisualizationPlugin)
         .add_systems(Startup, (start_simulation, set_window_title))
         .add_systems(Update, configure_ui)
