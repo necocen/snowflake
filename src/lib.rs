@@ -6,9 +6,12 @@ use ndarray::Array2;
 use wasm_bindgen::prelude::*;
 
 mod gravner_griffeath;
+#[cfg(not(target_arch = "wasm32"))]
 mod png;
 mod reiter;
+#[cfg(not(target_arch = "wasm32"))]
 mod stl;
+#[cfg(not(target_arch = "wasm32"))]
 mod svg;
 mod visualization;
 
@@ -33,6 +36,7 @@ fn start_simulation(mut field: ResMut<Field>) {
     field.is_running = true;
 }
 
+#[allow(dead_code)]
 #[derive(Event)]
 enum ControlEvent {
     Reset,
