@@ -12,6 +12,9 @@ mod stl;
 mod svg;
 mod visualization;
 
+#[cfg(target_arch = "wasm32")]
+pub use wasm_bindgen_rayon::init_thread_pool;
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn run() {
     App::new()

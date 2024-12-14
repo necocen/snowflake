@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Snowflake Simulator</title>
+    </head>
+    <body>
+        <script type="module">
+            import init, {initThreadPool, run} from "./pkg/snowflake_rs.js";
+            await init();
+            console.log("WASM initialized");
+            await initThreadPool(navigator.hardwareConcurrency);
+            console.log("Web Workers initialized");
+            await run();
+        </script>
+    </body>
+</html>
