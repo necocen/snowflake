@@ -116,6 +116,20 @@ impl SimulationConfigLog {
         self.log.push(record);
     }
 
+    pub fn last(&self) -> Option<SimulationConfig> {
+        let config = self.log.last()?;
+        Some(SimulationConfig {
+            rho: config.rho,
+            beta: config.beta,
+            alpha: config.alpha,
+            theta: config.theta,
+            kappa: config.kappa,
+            mu: config.mu,
+            gamma: config.gamma,
+            sigma: config.sigma,
+        })
+    }
+
     pub fn clear(&mut self) {
         self.log.clear();
     }
@@ -277,44 +291,51 @@ impl State {
     }
 }
 
-fn event_listener(field: Res<Field>, mut reset_events: EventReader<ControlEvent>) {
+fn event_listener(
+    mut field: ResMut<Field>,
+    log: Res<SimulationConfigLog>,
+    mut reset_events: EventReader<ControlEvent>,
+) {
     for event in reset_events.read() {
         match event {
             ControlEvent::Reset => {
-                field.0.write().step = 0;
+                field.step = 0;
             }
-            ControlEvent::Save(_) => {
-                tracing::warn!("Saving is not supported on this platform");
-            }
+            ControlEvent::Save(now) => match log.save_to_csv(*now) {
+                Ok(path) => {
+                    tracing::info!("Saved CSV: {}", path.display());
+                }
+                Err(e) => {
+                    tracing::error!("Failed to save CSV: {e}");
+                }
+            },
         }
     }
 }
 
 fn update_simulation(
-    field: ResMut<Field>,
+    mut field: ResMut<Field>,
     mut state: ResMut<State>,
     config: Res<SimulationConfig>,
     mut log: ResMut<SimulationConfigLog>,
 ) {
-    let n = field.0.read().cells.shape()[0];
-    if field.0.read().step == 0 {
+    let n = field.cells.shape()[0];
+    if field.step == 0 {
         log.clear();
         *state = State::new(n, config.rho);
-        field.0.write().cells =
-            Zip::from(&state.a)
-                .and(&state.c)
-                .map_collect(|&a, &c| if a { c } else { 0.0 });
+        field.cells = Zip::from(&state.a)
+            .and(&state.c)
+            .map_collect(|&a, &c| if a { c } else { 0.0 });
     }
-    if !field.0.read().is_running {
+    if !field.is_running {
         return;
     }
-    // if old_config != config || field.0.read().step == 0 {
-    //     tracing::info!("Step: {}, {config:?}", field.read().step);
-    //     log.write()
-    //         .push(SimulationConfigLogRecord::new(field.read().step, &config));
-    //     old_config = config;
-    // }
-    let mut field = field.0.write();
+    let old_config = log.last().unwrap_or_default();
+    if old_config != *config || field.step == 0 {
+        tracing::info!("Step: {}, {config:?}", field.step);
+        log.push(SimulationConfigLogRecord::new(field.step, &config));
+    }
+
     if field.step % 100 == 0 {
         let total_mass = state.b.sum() + state.c.sum() + state.d.sum();
         tracing::debug!("step: {}, total_mass: {total_mass}", field.step);

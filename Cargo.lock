@@ -4237,7 +4237,6 @@ dependencies = [
  "fnv",
  "ndarray",
  "ndarray-rand",
- "parking_lot",
  "resvg",
  "serde",
  "stl_io",

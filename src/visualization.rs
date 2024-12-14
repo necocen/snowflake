@@ -39,7 +39,7 @@ fn setup(
     let mut transform = Transform::default();
     transform.rotate_z(30f32.to_radians());
     commands.spawn((Camera2d, transform));
-    let n = field.0.read().cells.shape()[0];
+    let n = field.cells.shape()[0];
     let hexagon = meshes.add(RegularPolygon::new(coordinates.scale / f32::sqrt(3.0), 6));
     let mesh_materials: Vec<MeshMaterial2d<ColorMaterial>> = (0..256)
         .map(|i| {
@@ -76,7 +76,6 @@ fn update_visualization(
     mesh_materials: Res<MeshMaterials>,
 ) {
     let new_values = {
-        let field = field.0.read();
         let max = field.cells.fold(0.0f32, |a, &b| a.max(b));
         let min = field
             .cells

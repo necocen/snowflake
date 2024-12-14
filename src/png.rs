@@ -4,16 +4,17 @@ use std::{
 };
 
 use chrono::{DateTime, Local};
+use ndarray::Array2;
 use resvg::{
     tiny_skia::Pixmap,
     usvg::{Options, Transform, Tree},
 };
 
-use crate::{svg::cells_to_document, Field};
+use crate::svg::cells_to_document;
 
-pub fn write_to_png(field: &Field, now: DateTime<Local>) -> anyhow::Result<PathBuf> {
+pub fn write_to_png(cells: &Array2<f32>, now: DateTime<Local>) -> anyhow::Result<PathBuf> {
     let size = 2000;
-    let document = cells_to_document(&field.0.read().cells, size as f32);
+    let document = cells_to_document(cells, size as f32);
     let mut buffer = Vec::new();
     let mut writer = Cursor::new(&mut buffer);
     svg::write(&mut writer, &document)?;

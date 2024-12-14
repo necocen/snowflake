@@ -6,8 +6,6 @@ use fnv::{FnvHashMap, FnvHashSet};
 use ndarray::Array2;
 use stl_io::{Normal, Triangle, Vertex};
 
-use crate::Field;
-
 #[derive(Clone, Copy)]
 struct Facet(Vec3, Vec3, Vec3);
 
@@ -31,8 +29,8 @@ impl Facet {
     }
 }
 
-pub fn write_to_stl(field: &Field, now: DateTime<Local>) -> std::io::Result<PathBuf> {
-    let triangles = cells_to_triangles(&field.0.read().cells, 0.025, 0.1);
+pub fn write_to_stl(cells: &Array2<f32>, now: DateTime<Local>) -> std::io::Result<PathBuf> {
+    let triangles = cells_to_triangles(cells, 0.025, 0.1);
     let filename = format!("snowflake-{}.stl", now.format("%Y%m%d%H%M%S"));
     let path = PathBuf::from(&filename);
     let mut file = OpenOptions::new()

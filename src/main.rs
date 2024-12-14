@@ -1,13 +1,9 @@
-use std::sync::Arc;
-
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use chrono::{DateTime, Local};
 use ndarray::Array2;
-use parking_lot::RwLock;
 
 mod gravner_griffeath;
-mod gravner_griffeath_mt;
 mod png;
 mod reiter;
 mod stl;
@@ -19,16 +15,15 @@ fn main() {
         .init_resource::<Field>()
         .add_event::<ControlEvent>()
         .add_plugins((DefaultPlugins, EguiPlugin))
-        // .add_plugins(reiter::ReiterSimulatorPlugin)
-        .add_plugins(gravner_griffeath_mt::GravnerGrifeeathSimulatorMTPlugin)
+        .add_plugins(reiter::ReiterSimulatorPlugin)
+        // .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
         .add_plugins(visualization::VisualizationPlugin)
         .add_systems(Startup, (start_simulation, set_window_title))
         .add_systems(Update, configure_ui)
         .run();
 }
 
-fn start_simulation(field: Res<Field>) {
-    let mut field = field.0.write();
+fn start_simulation(mut field: ResMut<Field>) {
     field.is_running = true;
 }
 
@@ -38,16 +33,14 @@ enum ControlEvent {
     Save(DateTime<Local>),
 }
 
-#[derive(Resource, Default)]
-pub struct Field(pub Arc<RwLock<FieldInner>>);
-
-pub struct FieldInner {
+#[derive(Resource)]
+pub struct Field {
     pub cells: Array2<f32>,
     pub step: u64,
     pub is_running: bool,
 }
 
-impl FieldInner {
+impl Field {
     fn new(n: usize) -> Self {
         Self {
             cells: Array2::<f32>::zeros((n, n)),
@@ -57,7 +50,7 @@ impl FieldInner {
     }
 }
 
-impl Default for FieldInner {
+impl Default for Field {
     fn default() -> Self {
         Self::new(1000)
     }
@@ -65,27 +58,23 @@ impl Default for FieldInner {
 
 fn configure_ui(
     mut contexts: EguiContexts,
-    field: Res<Field>,
+    mut field: ResMut<Field>,
     mut events: EventWriter<ControlEvent>,
 ) {
     egui::Window::new("Control").show(contexts.ctx_mut(), |ui| {
-        let FieldInner {
-            is_running, step, ..
-        } = *field.0.read();
-        ui.add(egui::Label::new(format!("Step: {}", step)));
+        ui.add(egui::Label::new(format!("Step: {}", field.step)));
         ui.horizontal(|ui| {
             {
                 if ui
-                    .button(if is_running { "Pause" } else { "Resume" })
+                    .button(if field.is_running { "Pause" } else { "Resume" })
                     .clicked()
                 {
-                    let mut field = field.0.write();
                     field.is_running = !field.is_running;
                 }
                 if ui.button("Save STL").clicked() {
                     let now = Local::now();
                     events.send(ControlEvent::Save(now));
-                    match stl::write_to_stl(&field, now) {
+                    match stl::write_to_stl(&field.cells, now) {
                         Ok(path) => {
                             tracing::info!("Saved STL: {}", path.display());
                         }
@@ -97,7 +86,7 @@ fn configure_ui(
                 if ui.button("Save SVG").clicked() {
                     let now = Local::now();
                     events.send(ControlEvent::Save(now));
-                    match svg::write_to_svg(&field, now) {
+                    match svg::write_to_svg(&field.cells, now) {
                         Ok(path) => {
                             tracing::info!("Saved SVG: {}", path.display());
                         }
@@ -109,7 +98,7 @@ fn configure_ui(
                 if ui.button("Save PNG").clicked() {
                     let now = Local::now();
                     events.send(ControlEvent::Save(now));
-                    match png::write_to_png(&field, now) {
+                    match png::write_to_png(&field.cells, now) {
                         Ok(path) => {
                             tracing::info!("Saved PNG: {}", path.display());
                         }

@@ -5,10 +5,8 @@ use fnv::FnvHashMap;
 use ndarray::Array2;
 use svg::node::element::{path::Data, Group, Path};
 
-use crate::Field;
-
-pub fn write_to_svg(field: &Field, now: DateTime<Local>) -> std::io::Result<PathBuf> {
-    let document = cells_to_document(&field.0.read().cells, 1000.0);
+pub fn write_to_svg(cells: &Array2<f32>, now: DateTime<Local>) -> std::io::Result<PathBuf> {
+    let document = cells_to_document(cells, 1000.0);
     let filename = format!("snowflake-{}.svg", now.format("%Y%m%d%H%M%S"));
     let path = PathBuf::from(&filename);
     let file = OpenOptions::new()
