@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::Field;
+use crate::{ControlEvent, Field};
 
 pub struct VisualizationPlugin;
 
@@ -8,7 +8,7 @@ impl Plugin for VisualizationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Coordinates>();
         app.add_systems(Startup, setup);
-        app.add_systems(Update, update_visualization);
+        app.add_systems(Update, (event_listener, update_visualization));
     }
 }
 
@@ -62,6 +62,25 @@ fn setup(
                 mesh_materials[0].clone(),
                 Transform::from_translation(translation),
             ));
+        }
+    }
+}
+
+fn event_listener(
+    mut reset_events: EventReader<ControlEvent>,
+    mut query: Query<(
+        &mut Cell,
+        &mut Visibility,
+        &mut MeshMaterial2d<ColorMaterial>,
+    )>,
+) {
+    for event in reset_events.read() {
+        if let ControlEvent::Reset = event {
+            for (mut cell, mut visibility, _) in query.iter_mut() {
+                let Cell(_, _, value) = &mut *cell;
+                *value = 0;
+                *visibility = Visibility::Hidden;
+            }
         }
     }
 }
