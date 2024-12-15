@@ -25,7 +25,7 @@ pub fn run() {
         .add_event::<ControlEvent>()
         .add_plugins((DefaultPlugins, EguiPlugin))
         // .add_plugins(reiter::ReiterSimulatorPlugin)
-        .add_plugins(gravner_griffeath::GravnerGrifeeathSimulatorPlugin)
+        .add_plugins(gravner_griffeath::GravnerGriffeathSimulatorPlugin)
         .add_plugins(visualization::VisualizationPlugin)
         .add_systems(Startup, (start_simulation, set_window_title))
         .add_systems(Update, configure_ui)

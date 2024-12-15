@@ -8,9 +8,9 @@ use ndarray_rand::{rand_distr::Standard, RandomExt as _};
 
 use crate::{ControlEvent, Field};
 
-pub struct GravnerGrifeeathSimulatorPlugin;
+pub struct GravnerGriffeathSimulatorPlugin;
 
-impl Plugin for GravnerGrifeeathSimulatorPlugin {
+impl Plugin for GravnerGriffeathSimulatorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationConfig>();
         app.init_resource::<SimulationConfigLog>();
