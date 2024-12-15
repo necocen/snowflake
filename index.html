@@ -9,11 +9,17 @@
     <body>
         <script type="module">
             import init, {initThreadPool, run} from "./pkg/snowflake_rs.js";
-            await init();
-            console.log("WASM initialized");
-            await initThreadPool(navigator.hardwareConcurrency);
-            console.log("Web Workers initialized");
-            await run();
+            try {
+                await init();
+                console.log("WASM initialized");
+                await initThreadPool(navigator.hardwareConcurrency);
+                console.log("Web Workers initialized");
+                await run();
+            } catch (error) {
+                if (!error.message.startsWith("Using exceptions for control flow, don't mind me. This isn't actually an error!")) {
+                    throw error;
+                }
+            }
         </script>
     </body>
 </html>
