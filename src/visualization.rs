@@ -73,13 +73,15 @@ fn event_listener(
         &mut Visibility,
         &mut MeshMaterial2d<ColorMaterial>,
     )>,
+    mesh_materials: Res<MeshMaterials>,
 ) {
     for event in reset_events.read() {
         if let ControlEvent::Reset = event {
-            for (mut cell, mut visibility, _) in query.iter_mut() {
+            for (mut cell, mut visibility, mut mesh_material) in query.iter_mut() {
                 let Cell(_, _, value) = &mut *cell;
                 *value = 0;
                 *visibility = Visibility::Hidden;
+                *mesh_material = mesh_materials.0[0].clone();
             }
         }
     }
