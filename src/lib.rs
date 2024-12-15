@@ -83,43 +83,42 @@ fn configure_ui(
                 }
                 cfg_if::cfg_if! {
                     if #[cfg(not(target_arch = "wasm32"))] {
-
-                if ui.button("Save STL").clicked() {
-                    let now = Local::now();
-                    events.send(ControlEvent::Save(now));
-                    match stl::write_to_stl(&field.cells, now) {
-                        Ok(path) => {
-                            tracing::info!("Saved STL: {}", path.display());
+                        if ui.button("Save STL").clicked() {
+                            let now = Local::now();
+                            events.send(ControlEvent::Save(now));
+                            match stl::write_to_stl(&field.cells, now) {
+                                Ok(path) => {
+                                    tracing::info!("Saved STL: {}", path.display());
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to save STL: {e}");
+                                }
+                            }
                         }
-                        Err(e) => {
-                            tracing::error!("Failed to save STL: {e}");
+                        if ui.button("Save SVG").clicked() {
+                            let now = Local::now();
+                            events.send(ControlEvent::Save(now));
+                            match svg::write_to_svg(&field.cells, now) {
+                                Ok(path) => {
+                                    tracing::info!("Saved SVG: {}", path.display());
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to save SVG: {e}");
+                                }
+                            }
                         }
-                    }
-                }
-                if ui.button("Save SVG").clicked() {
-                    let now = Local::now();
-                    events.send(ControlEvent::Save(now));
-                    match svg::write_to_svg(&field.cells, now) {
-                        Ok(path) => {
-                            tracing::info!("Saved SVG: {}", path.display());
+                        if ui.button("Save PNG").clicked() {
+                            let now = Local::now();
+                            events.send(ControlEvent::Save(now));
+                            match png::write_to_png(&field.cells, now) {
+                                Ok(path) => {
+                                    tracing::info!("Saved PNG: {}", path.display());
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to save PNG: {e}");
+                                }
+                            }
                         }
-                        Err(e) => {
-                            tracing::error!("Failed to save SVG: {e}");
-                        }
-                    }
-                }
-                if ui.button("Save PNG").clicked() {
-                    let now = Local::now();
-                    events.send(ControlEvent::Save(now));
-                    match png::write_to_png(&field.cells, now) {
-                        Ok(path) => {
-                            tracing::info!("Saved PNG: {}", path.display());
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to save PNG: {e}");
-                        }
-                    }
-                }
                     }
                 }
             }
