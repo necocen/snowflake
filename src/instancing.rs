@@ -23,9 +23,10 @@ use bevy::{
             RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{
-            Buffer, BufferInitDescriptor, BufferUsages, PipelineCache, RenderPipelineDescriptor,
-            SpecializedMeshPipeline, SpecializedMeshPipelineError, SpecializedMeshPipelines,
-            VertexAttribute, VertexFormat, VertexStepMode,
+            BlendState, Buffer, BufferInitDescriptor, BufferUsages, ColorTargetState, ColorWrites,
+            PipelineCache, RenderPipelineDescriptor, SpecializedMeshPipeline,
+            SpecializedMeshPipelineError, SpecializedMeshPipelines, TextureFormat, VertexAttribute,
+            VertexFormat, VertexStepMode,
         },
         renderer::RenderDevice,
         sync_world::MainEntity,
@@ -196,6 +197,11 @@ impl SpecializedMeshPipeline for CustomPipeline {
             ],
         });
         descriptor.fragment.as_mut().unwrap().shader = self.shader.clone();
+        descriptor.fragment.as_mut().unwrap().targets = vec![Some(ColorTargetState {
+            format: TextureFormat::bevy_default(),
+            blend: Some(BlendState::ALPHA_BLENDING),
+            write_mask: ColorWrites::ALL,
+        })];
         Ok(descriptor)
     }
 }

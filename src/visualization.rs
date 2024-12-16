@@ -50,7 +50,7 @@ fn setup(
         .map(|position| InstanceData {
             position: position * coordinates.scale,
             scale: 1.0,
-            color: [0.0, 0.0, 0.0, 1.0],
+            color: [1.0, 1.0, 1.0, 0.0],
         })
         .collect::<Vec<_>>();
 
@@ -82,9 +82,7 @@ fn update_visualization(field: Res<Field>, mut query: Query<&mut InstanceMateria
             .iter_mut()
             .enumerate()
             .for_each(|(i, data)| {
-                data.color[0] = new_values[[i / n, i % n]];
-                data.color[1] = new_values[[i / n, i % n]];
-                data.color[2] = new_values[[i / n, i % n]];
+                data.color[3] = new_values[[i / n, i % n]];
             });
     });
 }
