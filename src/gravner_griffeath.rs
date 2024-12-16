@@ -15,7 +15,8 @@ impl Plugin for GravnerGriffeathSimulatorPlugin {
         app.init_resource::<SimulationConfig>();
         app.init_resource::<SimulationConfigLog>();
         app.init_resource::<State>();
-        app.add_systems(Update, (event_listener, configure_ui, update_simulation));
+        app.add_systems(Main, update_simulation);
+        app.add_systems(Update, (event_listener, configure_ui));
     }
 }
 

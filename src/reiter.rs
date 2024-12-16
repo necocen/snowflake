@@ -10,7 +10,8 @@ impl Plugin for ReiterSimulatorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimulationConfig>();
         app.init_resource::<State>();
-        app.add_systems(Update, (configure_ui, event_listener, update_simulation));
+        app.add_systems(Main, update_simulation);
+        app.add_systems(Update, (event_listener, configure_ui));
     }
 }
 
