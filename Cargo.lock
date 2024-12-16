@@ -4234,6 +4234,7 @@ dependencies = [
  "anyhow",
  "bevy",
  "bevy_egui",
+ "bytemuck",
  "cfg-if",
  "chrono",
  "csv",

@@ -6,6 +6,7 @@ use ndarray::Array2;
 use wasm_bindgen::prelude::*;
 
 mod gravner_griffeath;
+mod instancing;
 #[cfg(not(target_family = "wasm"))]
 mod png;
 mod reiter;

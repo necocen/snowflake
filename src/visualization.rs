@@ -1,16 +1,9 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::view::NoFrustumCulling};
 
-use crate::{ControlEvent, Field};
-
-pub struct VisualizationPlugin;
-
-impl Plugin for VisualizationPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<Coordinates>();
-        app.add_systems(Startup, setup);
-        app.add_systems(Update, (event_listener, update_visualization));
-    }
-}
+use crate::{
+    instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData},
+    Field,
+};
 
 #[derive(Resource)]
 struct Coordinates {
@@ -23,79 +16,58 @@ impl Default for Coordinates {
     }
 }
 
-#[derive(Component)]
-struct Cell(usize, usize, u8);
+pub struct VisualizationPlugin;
 
-#[derive(Resource)]
-struct MeshMaterials(Vec<MeshMaterial2d<ColorMaterial>>);
+impl Plugin for VisualizationPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<Coordinates>();
+        app.add_plugins(CustomMaterialPlugin);
+        app.add_systems(Startup, setup);
+        app.add_systems(Update, update_visualization);
+    }
+}
 
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     field: Res<Field>,
     coordinates: Res<Coordinates>,
 ) {
-    let mut transform = Transform::default();
-    transform.rotate_z(30f32.to_radians());
-    commands.spawn((Camera2d, transform));
     let n = field.cells.shape()[0];
+
+    // let hexagon = meshes.add(Circle::new(coordinates.scale / f32::sqrt(3.0)));
     let hexagon = meshes.add(RegularPolygon::new(coordinates.scale / f32::sqrt(3.0), 6));
-    let mesh_materials: Vec<MeshMaterial2d<ColorMaterial>> = (0..256)
-        .map(|i| {
-            let alpha = i as f32 / 255.0;
-            MeshMaterial2d(materials.add(ColorMaterial::from(Color::WHITE.with_alpha(alpha))))
+    let instance_data = (0..n)
+        .flat_map(|i| {
+            (0..n).map(move |j| {
+                Vec3::new(
+                    i as f32 + j as f32 / 2.0 - n as f32 * 0.75,
+                    (j as f32 - (n / 2) as f32) * f32::sqrt(3.0) / 2.0,
+                    0.0,
+                )
+            })
         })
-        .collect();
-    commands.insert_resource(MeshMaterials(mesh_materials.clone()));
+        .map(|position| InstanceData {
+            position: position * coordinates.scale,
+            scale: 1.0,
+            color: [0.0, 0.0, 0.0, 1.0],
+        })
+        .collect::<Vec<_>>();
 
-    for i in 0..n {
-        for j in 0..n {
-            let translation = Vec3::new(
-                i as f32 + j as f32 / 2.0 - n as f32 * 0.75,
-                (j as f32 - (n / 2) as f32) * f32::sqrt(3.0) / 2.0,
-                0.0,
-            ) * coordinates.scale;
-            commands.spawn((
-                Cell(i, j, 0),
-                Mesh2d(hexagon.clone()),
-                mesh_materials[0].clone(),
-                Transform::from_translation(translation),
-            ));
-        }
-    }
+    commands.spawn((
+        Mesh3d(hexagon),
+        InstanceMaterialData(instance_data),
+        NoFrustumCulling,
+    ));
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 0.0, 1500.0)
+            .looking_at(Vec3::ZERO, Vec3::Y)
+            .with_rotation(Quat::from_rotation_z(30f32.to_radians())),
+    ));
 }
 
-fn event_listener(
-    mut reset_events: EventReader<ControlEvent>,
-    mut query: Query<(
-        &mut Cell,
-        &mut Visibility,
-        &mut MeshMaterial2d<ColorMaterial>,
-    )>,
-    mesh_materials: Res<MeshMaterials>,
-) {
-    for event in reset_events.read() {
-        if let ControlEvent::Reset = event {
-            for (mut cell, mut visibility, mut mesh_material) in query.iter_mut() {
-                let Cell(_, _, value) = &mut *cell;
-                *value = 0;
-                *visibility = Visibility::Hidden;
-                *mesh_material = mesh_materials.0[0].clone();
-            }
-        }
-    }
-}
-
-fn update_visualization(
-    field: Res<Field>,
-    mut query: Query<(
-        &mut Cell,
-        &mut Visibility,
-        &mut MeshMaterial2d<ColorMaterial>,
-    )>,
-    mesh_materials: Res<MeshMaterials>,
-) {
+fn update_visualization(field: Res<Field>, mut query: Query<&mut InstanceMaterialData>) {
     let new_values = {
         let max = field.cells.fold(0.0f32, |a, &b| a.max(b));
         let min = field
@@ -103,20 +75,16 @@ fn update_visualization(
             .fold(max, |a, &b| if b > 0.0 { a.min(b) } else { a });
         (&field.cells - min) / (max - min)
     };
-
-    for (mut cell, mut visibility, mut mesh_material) in query.iter_mut() {
-        let Cell(i, j, value) = &mut *cell;
-        let new_value = (new_values[[*i, *j]] * 254.0) as u8; // 0..=254。最終的には1..=255になる。0は透明になってしまうので1から始まるようにする。
-        if new_value > 0 {
-            if *value == new_value {
-                continue;
-            }
-            *value = new_value;
-            let alpha = *value + 1;
-            *mesh_material = mesh_materials.0[alpha as usize].clone();
-            *visibility = Visibility::Visible;
-        } else {
-            *visibility = Visibility::Hidden;
-        }
-    }
+    let n = field.cells.shape()[0];
+    query.iter_mut().for_each(|mut instance_data| {
+        instance_data
+            .0
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, data)| {
+                data.color[0] = new_values[[i / n, i % n]];
+                data.color[1] = new_values[[i / n, i % n]];
+                data.color[2] = new_values[[i / n, i % n]];
+            });
+    });
 }
