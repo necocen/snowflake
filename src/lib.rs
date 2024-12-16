@@ -2,23 +2,23 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use chrono::{DateTime, Local};
 use ndarray::Array2;
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
 
 mod gravner_griffeath;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 mod png;
 mod reiter;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 mod stl;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_family = "wasm"))]
 mod svg;
 mod visualization;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(target_family = "wasm")]
 pub use wasm_bindgen_rayon::init_thread_pool;
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub fn run() {
     App::new()
         .init_resource::<Field>()
@@ -82,7 +82,7 @@ fn configure_ui(
                     field.is_running = !field.is_running;
                 }
                 cfg_if::cfg_if! {
-                    if #[cfg(not(target_arch = "wasm32"))] {
+                    if #[cfg(not(target_family = "wasm"))] {
                         if ui.button("Save STL").clicked() {
                             let now = Local::now();
                             events.send(ControlEvent::Save(now));
