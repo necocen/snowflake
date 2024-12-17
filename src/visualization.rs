@@ -35,7 +35,6 @@ fn setup(
 ) {
     let n = field.cells.shape()[0];
 
-    // let hexagon = meshes.add(Circle::new(coordinates.scale / f32::sqrt(3.0)));
     let hexagon = meshes.add(RegularPolygon::new(coordinates.scale / f32::sqrt(3.0), 6));
     let instance_data = (0..n)
         .flat_map(|i| {
@@ -61,7 +60,7 @@ fn setup(
     ));
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(0.0, 0.0, 1500.0)
+        Transform::from_xyz(0.0, 0.0, 900.0)
             .looking_at(Vec3::ZERO, Vec3::Y)
             .with_rotation(Quat::from_rotation_z(30f32.to_radians())),
     ));
