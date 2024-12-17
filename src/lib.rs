@@ -1,4 +1,9 @@
-use bevy::{asset::AssetMetaCheck, prelude::*, window::PrimaryWindow};
+use bevy::{
+    asset::AssetMetaCheck,
+    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use chrono::{DateTime, Local};
 use ndarray::Array2;
@@ -41,6 +46,7 @@ pub fn run() {
                     ..default()
                 }),
             EguiPlugin,
+            FrameTimeDiagnosticsPlugin,
         ))
         // .add_plugins(reiter::ReiterSimulatorPlugin)
         .add_plugins(gravner_griffeath::GravnerGriffeathSimulatorPlugin)
@@ -88,9 +94,17 @@ fn configure_ui(
     mut contexts: EguiContexts,
     mut field: ResMut<Field>,
     mut events: EventWriter<ControlEvent>,
+    diagnostics: Res<DiagnosticsStore>,
 ) {
     egui::Window::new("Control").show(contexts.ctx_mut(), |ui| {
-        ui.add(egui::Label::new(format!("Step: {}", field.step)));
+        ui.add(egui::Label::new(format!(
+            "Step: {}, FPS: {:>3.0}",
+            field.step,
+            diagnostics
+                .get(&FrameTimeDiagnosticsPlugin::FPS)
+                .and_then(|fps| fps.smoothed())
+                .unwrap_or_default()
+        )));
         ui.horizontal(|ui| {
             {
                 if ui
