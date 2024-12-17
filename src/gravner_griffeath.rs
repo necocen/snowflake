@@ -337,12 +337,15 @@ fn update_simulation(
         log.push(SimulationConfigLogRecord::new(field.step, &config));
     }
 
-    if field.step % 100 == 0 {
-        let total_mass = state.b.sum() + state.c.sum() + state.d.sum();
-        tracing::debug!("step: {}, total_mass: {total_mass}", field.step);
+    for _ in 0..5 {
+        if field.step % 100 == 0 {
+            let total_mass = state.b.sum() + state.c.sum() + state.d.sum();
+            tracing::debug!("step: {}, total_mass: {total_mass}", field.step);
+        }
+        field.step += 1;
+        state.update(*config);
     }
-    field.step += 1;
-    state.update(*config);
+
     field.cells = Zip::from(&state.a)
         .and(&state.c)
         .map_collect(|&a, &c| if a { c } else { 0.0 });
