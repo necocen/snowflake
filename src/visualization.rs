@@ -69,10 +69,7 @@ fn setup(
 fn update_visualization(field: Res<Field>, mut query: Query<&mut InstanceMaterialData>) {
     let new_values = {
         let max = field.cells.fold(0.0f32, |a, &b| a.max(b));
-        let min = field
-            .cells
-            .fold(max, |a, &b| if b > 0.0 { a.min(b) } else { a });
-        (&field.cells - min) / (max - min)
+        &field.cells / max
     };
     let n = field.cells.shape()[0];
     query.iter_mut().for_each(|mut instance_data| {
