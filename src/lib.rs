@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{asset::AssetMetaCheck, prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
 use chrono::{DateTime, Local};
 use ndarray::Array2;
@@ -28,8 +28,8 @@ pub fn run() {
             DefaultPlugins
                 .set(AssetPlugin {
                     // アセットのmetaチェックを無効化する
-                    // Cloudflare Pagesは存在しないファイルにHTTP 200を返してしまってエラーになるため
-                    meta_check: bevy::asset::AssetMetaCheck::Never,
+                    // Cloudflare Pagesは存在しないファイルへのリクエストをよしなにリダイレクトして200を返すため
+                    meta_check: AssetMetaCheck::Never,
                     ..default()
                 })
                 .set(WindowPlugin {
