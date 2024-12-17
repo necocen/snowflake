@@ -1,0 +1,6 @@
+/*
+    Cross-Origin-Opener-Policy: same-origin
+    Cross-Origin-Embedder-Policy: require-corp
+
+/assets/shaders/*.wgsl
+    Content-Type: text/wgsl

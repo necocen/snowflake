@@ -24,7 +24,15 @@ pub fn run() {
     App::new()
         .init_resource::<Field>()
         .add_event::<ControlEvent>()
-        .add_plugins((DefaultPlugins, EguiPlugin))
+        .add_plugins((
+            DefaultPlugins.set(AssetPlugin {
+                // アセットのmetaチェックを無効化する
+                // Cloudflare Pagesは存在しないファイルにHTTP 200を返してしまってエラーになるため
+                meta_check: bevy::asset::AssetMetaCheck::Never,
+                ..default()
+            }),
+            EguiPlugin,
+        ))
         // .add_plugins(reiter::ReiterSimulatorPlugin)
         .add_plugins(gravner_griffeath::GravnerGriffeathSimulatorPlugin)
         .add_plugins(visualization::VisualizationPlugin)
