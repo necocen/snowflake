@@ -2,6 +2,9 @@
 
 ![Demo](./img/demo.gif "Animation showing the progression of a snow crystal growth simulation")
 
+
+Try the interactive simulation in your web browser: [Live Demo](https://yuki.necocen.info/)
+
 ----
 
 ## Overview
@@ -12,13 +15,28 @@ The simulation algorithm implements the one described in reference [1]. While pa
 
 By toggling the comments on L.19 and L.20 in main.rs, you can switch to an implementation using the method from reference [2]. In this case, β (water vapor density) is also only reflected upon reset.
 
-As it's built with Rust and Bevy, it should theoretically be possible to make it run in a web browser with some effort. However, since it uses rayon support for ndarray, that part would need to be modified.
+Being written in Rust and Bevy, it can run in web browsers (though it requires the nightly version of Rust).
 
 ## Usage
 
-```sh
+### Desktop Version
+```rust
 cargo run --release
 ```
+
+### Web Version
+1. Build the WebAssembly package:
+```
+rustup run nightly wasm-pack build --target web --release
+```
+2. When hosting the web version, your server needs to set the following Cross-Origin headers:
+```
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+These headers (COOP/COEP) are required for the application to function properly in web browsers.
+
+### 3D Model
 
 You can export STL file by pressing "Save STL" button on the control panel. The exported file will be placed in your working directory.
 
