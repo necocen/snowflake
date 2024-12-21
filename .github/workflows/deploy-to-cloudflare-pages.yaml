@@ -6,14 +6,34 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      deployments: write
     steps:
+      - uses: Kesin11/actions-timeline@v2
       - uses: actions/checkout@v4
       - run: |
           rustup toolchain install nightly
           rustup target add wasm32-unknown-unknown
           rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
-      - run: |
+      - name: Build
+        run: |
           # ビルド時にカスタムプロファイルを使いたいのでwasm-packはlatestが必要
           cargo +nightly install --git https://github.com/rustwasm/wasm-pack.git
       - run: rustup run nightly wasm-pack build --target web --profile release-wasm
+      - name: Gather artifacts
+        run: |
+          mkdir -p dist
+          cp -r pkg dist/
+          cp -r assets dist/
+          cp index.html dist/
+          cp _headers dist/
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=example --commit-dirty=true
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
