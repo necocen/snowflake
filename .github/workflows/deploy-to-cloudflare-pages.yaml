@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - master
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,5 +38,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=example --commit-dirty=true
+          command: pages deploy dist --project-name=snowflake-simulator --commit-dirty=true
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
