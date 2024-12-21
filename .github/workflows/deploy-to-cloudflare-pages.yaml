@@ -14,5 +14,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: |
           # ビルド時にカスタムプロファイルを使いたいのでwasm-packはlatestが必要
-          cargo install --git https://github.com/rustwasm/wasm-pack.git
+          cargo +nightly install --git https://github.com/rustwasm/wasm-pack.git
       - run: rustup run nightly wasm-pack build --target web --profile release-wasm
