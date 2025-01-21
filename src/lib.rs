@@ -1,5 +1,4 @@
 use bevy::{
-    asset::AssetMetaCheck,
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
     window::PrimaryWindow,
@@ -31,12 +30,6 @@ pub fn run() {
         .add_event::<ControlEvent>()
         .add_plugins((
             DefaultPlugins
-                .set(AssetPlugin {
-                    // アセットのmetaチェックを無効化する
-                    // Cloudflare Pagesは存在しないファイルへのリクエストをよしなにリダイレクトして200を返すため
-                    meta_check: AssetMetaCheck::Never,
-                    ..default()
-                })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         // Web版はブラウザ全体に表示

@@ -1,17 +1,13 @@
 use bevy::{
-    core_pipeline::core_3d::Transparent3d,
-    ecs::{
+    asset::embedded_asset, core_pipeline::core_3d::Transparent3d, ecs::{
         query::QueryItem,
         system::{
             lifetimeless::{Read, SRes},
             SystemParamItem,
         },
-    },
-    pbr::{
+    }, pbr::{
         MeshPipeline, MeshPipelineKey, RenderMeshInstances, SetMeshBindGroup, SetMeshViewBindGroup,
-    },
-    prelude::*,
-    render::{
+    }, prelude::*, render::{
         extract_component::{ExtractComponent, ExtractComponentPlugin},
         mesh::{
             allocator::MeshAllocator, MeshVertexBufferLayoutRef, RenderMesh, RenderMeshBufferInfo,
@@ -32,15 +28,16 @@ use bevy::{
         sync_world::MainEntity,
         view::ExtractedView,
         Render, RenderApp, RenderSet,
-    },
+    }
 };
 
-const SHADER_ASSET_PATH: &str = "shaders/instancing.wgsl";
+const SHADER_ASSET_PATH: &str = "embedded://snowflake_rs/instancing.wgsl";
 
 pub struct CustomMaterialPlugin;
 
 impl Plugin for CustomMaterialPlugin {
     fn build(&self, app: &mut App) {
+        embedded_asset!(app, "./instancing.wgsl");
         app.add_plugins(ExtractComponentPlugin::<InstanceMaterialData>::default());
         app.sub_app_mut(RenderApp)
             .add_render_command::<Transparent3d, DrawCustom>()
