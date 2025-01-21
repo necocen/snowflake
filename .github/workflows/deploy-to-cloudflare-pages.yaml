@@ -30,9 +30,9 @@ jobs:
         run: |
           mkdir -p dist
           cp -r pkg dist/
-          cp -r assets dist/
           cp index.html dist/
           cp _headers dist/
+          cp img/ogp.png dist/
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
