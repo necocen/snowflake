@@ -44,12 +44,12 @@ impl Default for SimulationConfig {
     fn default() -> Self {
         Self {
             rho: 0.5,
-            beta: 1.4,
-            alpha: 0.1,
-            theta: 0.005,
-            kappa: 0.001,
-            mu: 0.06,
-            gamma: 0.001,
+            beta: 1.3,
+            alpha: 0.08,
+            theta: 0.025,
+            kappa: 0.003,
+            mu: 0.07,
+            gamma: 0.00005,
             sigma: 0.0,
         }
     }
