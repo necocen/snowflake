@@ -15,7 +15,9 @@ The simulation algorithm implements the one described in reference [1]. While pa
 
 By toggling the comments on L.19 and L.20 in main.rs, you can switch to an implementation using the method from reference [2]. In this case, β (water vapor density) is also only reflected upon reset.
 
-Being written in Rust and Bevy, it can run in web browsers (though it requires the nightly version of Rust).
+This project is compatible with web browsers when compiled to WebAssembly (requires the nightly version of Rust).
+
+For more details, check out the [Zenn article](https://zenn.dev/galapagos/articles/snowflake-simulator-in-rust) (in Japanese).
 
 ## Usage
 
