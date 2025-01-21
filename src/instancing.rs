@@ -1,13 +1,18 @@
 use bevy::{
-    asset::embedded_asset, core_pipeline::core_3d::Transparent3d, ecs::{
+    asset::embedded_asset,
+    core_pipeline::core_3d::Transparent3d,
+    ecs::{
         query::QueryItem,
         system::{
             lifetimeless::{Read, SRes},
             SystemParamItem,
         },
-    }, pbr::{
+    },
+    pbr::{
         MeshPipeline, MeshPipelineKey, RenderMeshInstances, SetMeshBindGroup, SetMeshViewBindGroup,
-    }, prelude::*, render::{
+    },
+    prelude::*,
+    render::{
         extract_component::{ExtractComponent, ExtractComponentPlugin},
         mesh::{
             allocator::MeshAllocator, MeshVertexBufferLayoutRef, RenderMesh, RenderMeshBufferInfo,
@@ -28,7 +33,7 @@ use bevy::{
         sync_world::MainEntity,
         view::ExtractedView,
         Render, RenderApp, RenderSet,
-    }
+    },
 };
 
 const SHADER_ASSET_PATH: &str = "embedded://snowflake_rs/instancing.wgsl";

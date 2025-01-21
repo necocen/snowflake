@@ -29,15 +29,14 @@ pub fn run() {
         .init_resource::<Field>()
         .add_event::<ControlEvent>()
         .add_plugins((
-            DefaultPlugins
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        // Web版はブラウザ全体に表示
-                        fit_canvas_to_parent: true,
-                        ..default()
-                    }),
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    // Web版はブラウザ全体に表示
+                    fit_canvas_to_parent: true,
                     ..default()
                 }),
+                ..default()
+            }),
             EguiPlugin,
             FrameTimeDiagnosticsPlugin,
         ))
