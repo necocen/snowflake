@@ -1,4 +1,4 @@
-#import bevy_pbr::mesh_functions::{get_world_from_local, mesh_position_local_to_clip}
+#import bevy_sprite::mesh2d_functions::{get_world_from_local, mesh2d_position_local_to_clip}
 
 struct Vertex {
     @location(0) position: vec3<f32>,
@@ -22,7 +22,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     // for this example as the instance_index builtin would map to the wrong
     // index in the Mesh array. This index could be passed in via another
     // uniform instead but it's unnecessary for the example.
-    out.clip_position = mesh_position_local_to_clip(
+    out.clip_position = mesh2d_position_local_to_clip(
         get_world_from_local(0u),
         vec4<f32>(position, 1.0)
     );

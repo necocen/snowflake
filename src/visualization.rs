@@ -53,17 +53,14 @@ fn setup(
         })
         .collect::<Vec<_>>();
 
+    let mut transform = Transform::default();
+    transform.rotate_z(30f32.to_radians());
     commands.spawn((
-        Mesh3d(hexagon),
+        Mesh2d(hexagon),
         InstanceMaterialData(instance_data),
         NoFrustumCulling,
     ));
-    commands.spawn((
-        Camera3d::default(),
-        Transform::from_xyz(0.0, 0.0, 900.0)
-            .looking_at(Vec3::ZERO, Vec3::Y)
-            .with_rotation(Quat::from_rotation_z(30f32.to_radians())),
-    ));
+    commands.spawn((Camera2d, transform));
 }
 
 fn update_visualization(field: Res<Field>, mut query: Query<&mut InstanceMaterialData>) {
