@@ -25,26 +25,24 @@ pub fn cells_to_document(cells: &Array2<f32>, size: f32) -> svg::Document {
     let min = cells.fold(max, |a, &b| if b > 0.0 { a.min(b) } else { a });
     let quantized =
         ((cells - min) / (max - min)).mapv(|v| if v < 0.0 { 0 } else { 255 - (v * 254.0) as u8 });
-    for i in 1..=255 {
-        let alpha = i as f32 / 255.0;
-        let contours = extract_contours(&quantized.mapv(|v| v == i), scale);
-        let mut data = Data::new();
-        for contour in contours {
-            let mut iter = contour.iter();
-            if let Some((x, y)) = iter.next() {
-                data = data.move_to((*x, *y));
-            }
-            for (x, y) in iter {
-                data = data.line_to((*x, *y));
-            }
-            data = data.close();
+    let contours = extract_contours(&quantized.mapv(|v| v > 0), scale);
+    let mut data = Data::new();
+    for contour in contours {
+        let mut iter = contour.iter();
+        if let Some((x, y)) = iter.next() {
+            data = data.move_to((*x, *y));
         }
-        let path = Path::new()
-            .set("d", data)
-            .set("fill", "white")
-            .set("fill-opacity", alpha);
-        group = group.add(path);
+        for (x, y) in iter {
+            data = data.line_to((*x, *y));
+        }
+        data = data.close();
     }
+    let path = Path::new()
+        .set("d", data)
+        .set("stroke", "black")
+        .set("stroke-width", "0.25")
+        .set("fill", "none");
+    group = group.add(path);
 
     group = group.set(
         "transform",
